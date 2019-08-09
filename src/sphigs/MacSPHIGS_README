@@ -1,0 +1,196 @@
+The first part of this document is for system administrators or anyone
+who must install SPHIGS in a Macintosh environment.  The latter part
+of this document for any authors of SPHIGS applications.
+
+If you obtained this software via ftp (instead of floppy), also
+consult the file called "CopyToMac_instructions".
+
+All persons would be wise to run the SPHIGS demo application.  If you
+received SPHIGS via floppy, you'll find it in the "DEMO APPLICATIONS"
+folder.  Otherwise, you'll need to generate the demo program yourself
+(its source code lies in MAC_demo_anim.c), following the instructions
+shown in the following sections.
+
+
+==============================================================================
+	
+          GENERAL INFORMATION ON BUILDING THE SPHIGS LIBRARY
+
+MacSPHIGS is written for the THINK C v5.0 environment.  This README
+file assumes the THINK C environment is being used.  Read the "Pascal
+version info" file for additional information for adding Pascal
+support to your site.
+
+IF YOU RECEIVED SPHIGS VIA FLOPPY... Making the libraries is simple:
+you don't have to!  In the "LIBRARIES" folder, you'll find two
+versions of the SPHIGS library, one for the MacII environment (020/881
+chips & Color QuickDraw) and one for Macs that do not have the 020/881
+chips.  Be aware: the MacII library will work just fine on a MacII
+that does not have a color monitor.
+
+IF YOU RECEIVED SPHIGS VIA FTP (or want to know how to recompile
+libraries in case you patch/edit the source): You must continue
+reading this section of the document.
+
+If you like, you can make libraries for SPHIGS.  Unfortuantely, there
+is so much source that it must be split into several different
+libraries.  In the folder called "MacSPHIGS", create three different
+project files ("SPHIGS.1.proj", "SPHIGS.2.proj", "MAT3.proj") and
+place into them source from the "src/sphigs/" directory as follows:
+
+  SPHIGS.1.proj:	       SPHIGS.2.proj:       
+   sph_attrib.c                 sph_bsp.c               
+   sph_bitstr.c                 sph_object.c            
+   sph_canon.c    	     	sph_view.c              
+   sph_clip.c                   sph_element.c           
+   sph_cull.c              	sph_zsort.c             
+   sph_draw.c			                        
+   sph_edit.c    	       MAT3.proj:           
+   sph_elemdebug.c		MAT3.c                  
+   sph_error.c             	MAT3geom.c              
+   sph_falloc.c  		MAT3mat.c               
+   sph_filter.c  		MAT3vec.c               
+   sph_input.c             	MAT3inv.c               
+   sph_intense.c 			                        
+   sph_modxform.c
+   sph_objdebug.c
+   sph_optimize.c
+   sph_post.c
+   sph_refresh.c
+   sph_state.c   
+   sph_traverse.c
+   sph_utility.c 
+
+Set the following options using the <Options...> dialog:
+	1) "Native Floating Point Format" must be off
+	2) The "ANSI conformance" options should be set so as to conform
+		to the ANSI standards (see online help for details)
+	3) It is preferable to turn on the options labeled "68881" and 
+		"68020"	to use the native instruction sets on those
+		processors.  If you don't know about these chips, ask
+		your local Mac guru!  As a general rule, MacII's have
+		both special chips, and Plus/SE's don't.  If you know
+		that your machine contains the 68020, 030, or 040
+		processor, you should check these options.
+
+Now <Build Library...> for each of the above three projects, and name
+the libraries ("SPHIGS.1.lib", "SPHIGS.2.lib", "MAT3.lib").
+
+Later in this document is a section that tells you how to test the
+library once you've created it.
+
+When you are satisfied that the SPHIGS library is working and ready
+for installation, go ahead and install!  But remember:
+
+If you are installing SPHIGS on a file server for multiple people to
+use, be sure that the SPHIGS header files and library file(s) are
+publicly available (read-only) in a folder that is a descendent of the
+folder that contains "THINK C".  (See CopyToMac_instructions)
+
+The resource file (SPHIGSproject.rsrc) should then also be made
+available in the same place the header files are.
+
+If application writers will be using independent machines with
+independent copies of THINK C and SPHIGS, the SPHIGS header/resource
+files and library must be distributed to all users.  The users must
+place them in a folder that is either a descendent of the "THINK C"
+folder or a descendent of the folder containing the application's
+project file.
+
+
+==============================================================================
+	
+	  TESTING THE SPHIGS LIBRARY BEFORE INSTALLING
+
+The test applications that lie in the SPHIGSExamples folder are an
+excellent way to test a new library for sanity.  Simply follow the
+instructions in the next section...
+
+==============================================================================
+	
+      GENERAL INFORMATION ON WRITING MacSPHIGS APPLICATIONS IN C
+
+NOTE: This information is no substitute for:
+	1) Having a copy of "SPHIGS for ANSI C" ref. manual (approx. 
+		13 pages)
+	2) Being literate in ANSI C
+	3) Having access to Chapter 2 of the Foley, et.al. textbook
+	4) Having access to the "THINK C User's Manual"
+
+Section "0" of the "SPHIGS for THINK C" documentation is very
+important.  It tells you about current shortcomings and omissions in
+the current version of MacSPHIGS, and differences between MacSPHIGS
+and the SPHIGS spec in the textbook.
+
+Working with THINK C involves working with project files.  Some of you
+will create one project file for each application you are building;
+others will use the same project file for multiple applications,
+"swapping in/out" source files from the project file when switching
+contexts.
+
+The name of the project file is important for one reason: If your
+project is named "DOOBY", there must be (in the same folder) a copy of
+the SPHIGS resource file and that copy must be named "DOOBY.rsrc".
+The SPHIGS resource file is named "SPHIGSproject.rsrc" and your system
+administrator will be able to tell you where it is.  Make a *copy* of
+it (don't move/rename it!) and rename the *copy* whenever you create a
+new project.
+
+In a project file, you must <Add...> these pre-made library files:
+	1) MacTraps
+	2) ANSI       ** more on this later **
+	3) unix
+	4) SPHIGS.1.lib
+	4) SPHIGS.2.lib
+	4) MAT3.lib
+	4) SRGP.lib
+		  		   
+Then, you add your own ".c" files.  Any files using SPHIGS calls must
+begin with:
+	#include <sphigs.h>
+
+To take full advantage of the extra error checking an ANSI-C compiler
+can perform, you should turn ON the "Require Prototypes" and "Check
+Pointer Types" option in the <Options...> dialog.
+
+In the <Project><Set Project Type...> dialog, set the "MultiFinder
+aware" and "32-bit compatible" flags ON, and set the memory partition
+to a value larger than the default (384k), such as 2000.  You will
+want to increase this if you find that your application runs out of
+memory even though your machine's capacity has not been truly
+exhausted.
+
+SPHIGS projects are too big to fit in one 32K segment.  THINK C will
+tell you about this problem when you try to link your source and all
+the libraries together.  Here's how we usually split the files up:
+ANSI and unix in one segment, 	MacTraps in a segment by itself,
+All SRGP, SPHIGS and MAT3 libraries in segments by themselves
+
+About the use of the ANSI library...  If you are on a MacII, you can
+use the "ANSI-881" library instead.  No matter what machine you are
+on, you can use "ANSI-small" if you wish, but only if your program
+makes a minimal amount of calls to the ANSI functions provided by
+THINK C.  (You can always *try* to use "ANSI-small" and then go back
+to "ANSI" if you get a lot of link errors.)
+
+If you don't want to bother making libraries, you can place your own
+source code into one large project with all of the SPHIGS and SRGP
+source code, provided that you split the .c files into the same
+segment groupings.  See the lists above.
+
+ONE FINAL NOTE: Please use the SRGP reference manual that came in the
+DOC folder, and before you do any programming, read carefully section
+0 of that manual.
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+Please report any errors, omissions, or misleading information in this
+document or the software to:
+
+	Graphics Textbook Support
+	c/o Dr. van Dam
+	Brown Univ box 1910
+	Providence, RI  02912

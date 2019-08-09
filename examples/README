@@ -1,0 +1,125 @@
+Two programs are included in this directory for your enjoyment.
+
+The first program is included in two versions, the second being a Macintosh
+version which includes dialog boxes and help windows --- it was the SPHIGS
+tutorial shown at SIGGRAPH '90.
+
+------------------------------------------------------------------------------
+
+				   SPHDEMO*.c
+
+AUTHOR: D. Sklar
+
+To make this program, simply type:  "make PROG=SPHDEMO"
+
+This program is an interactive model-viewing system.  A model of a neighborhood
+of houses is created and the camera is initialized.  You can change the
+camera's position, orientation, and parameters by using keystrokes.  The user
+interface is poor, but it is a satisfactory method for getting acquainted with
+the SPHIGS camera model.
+
+Two images of the model are visible on the screen.  In the larger viewport is a
+solid, shaded image that is the (currently) highest-quality image SPHIGS can
+produce.  In the smaller viewports are wireframe-raw images produced using
+ORTHOGRAPHIC projection; they also show the view volume and the location of the
+PRP and VRP.
+
+The numeric keys allow you to choose which part of the camera you wish to
+modify.  Each time you hit one of these keys, a prompt is sent to the console
+(e.g., xterm, hpterm) to remind you which camera part you are 
+currently manipulating.
+
+	1	change the VRP along the UVN axes 
+		   (to move the camera relative to current orientation)
+	2	change the VRP along the XYZ axes
+		   (to move the camera relative to World Coordinate system)
+	3	change the VPN (to rotate the camera)
+	4	change the PRP (to change the focal length)
+	5	change the front clipping-plane distance
+	6	change the back clipping-plane distance
+
+	0 	restore the camera to default location, orientation, etc.
+
+You manipulate the "camera part" that you have selected, on three axes:
+	X (or U)
+	Y (or V)
+	Z (or N)
+
+To manipulate on the X axis, you use "s" for left and "d" for right.
+	"s" subtracts			"d" adds
+
+To manipulate on the Y axis, you use "e" for up and "x" for down.
+	"x" subtracts 			"e" adds 
+
+To manipulate on the Z axis, you use "+" to move away from the model (towards
+positive infinity) and "-" to move into the model.  (The model's vertices all
+have negative Z coords.)
+	"-" subtracts 			"=" adds 
+
+Each time you hit one of the above six keys, the camera is moved by STEPSIZE
+units or rotated by STEPSIZE degrees.  The default step size is 30
+units/degrees, but you can manipulate the step size using the "<" (to decrease
+it by 5) and ">" (to increase it by 5) keys.  The current step size is
+echoed to the console whenever it is changed.
+
+You can restore the camera's attributes to their default values (as they are
+when the program starts up) by hitting '0'.  This is a great way to recover if
+you've gotten "lost".
+
+You can also edit the camera settings with the mouse.  Currently, dragging in
+the perspective view has the following effect, depending on which mouse button
+is held down:
+
+	Left Button	- Translates camera in U-V film plane
+	Middle Button 	- Translates camera in and out along N axis
+	Right Button 	- Rotates camera using a virtual trackball
+
+The mouse is touchy, and may jump if you move too quickly.  This is because of
+the time lag between processing events and re-rendering.
+
+You can add a chimney to each house by entering a capital "C", and remove it by
+entering a lowercase "c".
+
+You can eliminate the wireframe orthographic views (and blow up the nicely
+renderered view to full window size) by hitting lowercase 'a', and restore all
+the views by hitting capital 'A'.
+
+You can toggle the larger view between different rendering modes as follows:
+	"f"			to set rendering to lit-flat shading
+	"F"			to set rendering to flat shading
+	"w"			to set rendering to quality wireframe
+	"W"			to set rendering to raw wireframe
+
+You can turn double-buffering on and off by pressing "b" or "B", respectively.
+
+You can switch between orthographic and perspective viewing by pressing "}"
+and "{", respectively.
+
+You can activate a floor grid by typing "G".
+
+You can switch between the RENDER_BSP and RENDER_PAINTERS rendering algorithms
+by pressing "P" and "p", respectively.
+
+Input pick correlation is demonstrated by simply clicking the mouse button
+anywhere within the main (perspective) viewport.  If you click on any part of a
+house, you will see a message reporting which house you picked.
+
+
+------------------------------------------------------------------------------
+
+				 robot_anim.c
+
+AUTHOR: Atul Butte
+
+To make this program, simply type:  "make PROG=robot_anim"
+
+To run it, type:  "robot_anim < robot_anim.data"
+
+A brief animation of a robot.  Uses SPHIGS' built-in double-buffering mode.
+
+When executing, be sure to redirect stdin so the program
+can read from the data file: "robot_anim.data"
+
+The code for this program is a good example of the use of structure-network
+editing for animation purposes.
+

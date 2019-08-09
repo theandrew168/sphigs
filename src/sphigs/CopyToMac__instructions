@@ -1,0 +1,51 @@
+
+==============================================================================
+
+		INFORMATION FOR THOSE COPYING FROM UNIX TO MAC
+
+The files which should be transferred to a Mac in order to create the Mac
+version of SPHIGS lie in three directories:
+	1) src/sphigs
+	2) examples
+	2) examples/viewing_demo.MAConly
+
+In each of those directories, you'll find a file called
+"__mactransfer_filelist", naming all the files in that directory that should be
+sent to the Mac.  This file will help you automate the transfer if you know
+some basic UNIX/shell tricks.  For instance, if you will use ftp to do the
+transfer, you can use the following sed command to create a file containing a
+"put" command for each file:
+
+	sed 's/^/put /' __mactransfer_filelist  > /tmp/putcmds
+	
+The resulting file may be fed straight into ftp's stdin, being prepended with a
+carriage return (so the first "put" won't be ignored) and appended with a
+"quit". 
+
+The file containing SPHIGS's resources (SPHIGSproject.rsrc.hqx) is in hex
+format and (as soon as you've gotten it onto a Mac) it must be converted to
+binary via the BinHex program, or the StuffIt program, or any equivalent
+supporting BinHex format.
+
+Now...  on the Macintosh...
+
+
+You must first install SRGP as directed in that source hierarchy's
+release notes.
+
+Next, in the root folder that you labeled "SRGP_SPHIGS", create a new folder called "SPHIGSExamples".  Place the resource file here, and all files
+transferred from the "examples/" directory.  You will create project
+files here later.
+
+Also in the root folder, make another folder called "MacSPHIGS".  It
+should contain the ".c" and ".h" files found in the "src/sphigs/"
+directory.
+
+In the folder called "SRGPincludes" that you created in the THINK C folder tree,
+add the following header files:
+
+	sphigs.h	mat3.h
+	sphigslocal.h	elementType.h
+	sph_face.h
+
+Follow the directions in "MacSPHIGS_README" to compile SPHIGS.

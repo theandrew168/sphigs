@@ -1,0 +1,986 @@
+\def\minorsect#1#2{\section{\ttit{#1~~~~}#2}}
+\def\majorsect#1#2{\section{\ttit{#1~~~~}#2}}
+\def\elementgenerator{~~$\ddagger$}
+\maketitle{SPHIGS for ANSI-C ~~~~ (v1.0, March 8, 1993)}
+\itit{\centerline{David Frederick Sklar}}
+\itit{\centerline{Christopher R. Brown}}
+\newpar
+The Simple Programmer's Hierarchical Graphics 
+Standard is composed of a library
+of functions, and a
+header file (``sphigs.h'') that defines custom data types and constants, and
+which prototypes all SPHIGS routines.  This paper is a complete but
+\slantit{extremely terse} description 
+of the ANSI-C binding.  You must read Chapter 7 of
+\itit{Computer Graphics --- Principles and Practice} (Foley, van Dam, Feiner,
+and Hughes, Addison-Wesley, 1990) for a full description of SPHIGS.
+NOTE: SPHIGS requires the SRGP library.
+
+
+\bigskip
+
+\item{0)} Comparison with Textbook Specification
+
+\newdisplay
+
+\item{1)} States of the System
+\itemmm{1)} initializing the system
+\itemmm{2)} controlling screen regeneration
+
+\newdisplay
+
+\item{2)} Maintenance of the Structure Database
+\itemmm{1)} macroscopic editing
+\itemmm{2)} intra-structure editing
+
+\newdisplay
+
+\item{3)} Coordinate Systems
+\itemmm{1)} geometric data types
+\itemmm{2)} viewing transformations
+\itemmm{3)} modeling transformations
+
+\newdisplay
+
+\item{4)} Color and Shading
+
+\newdisplay
+
+\item{5)} Creation of Graphics Objects
+\itemmm{1)} polyLine
+\itemmm{2)} polyMarker
+\itemmm{3)} text
+\itemmm{4)} fill area
+\itemmm{5)} polyhedron
+\itemmm{6)} rendering modes
+\itemmm{7)} execution of subordinate structures
+
+\newdisplay
+
+\item{6)} Dynamic Invisibility and Highlighting
+
+\newdisplay
+
+\item{7)} Input
+\itemmm{1)} control of input devices
+\itemmm{2)} pick correlation
+
+\newdisplay
+
+\item{8)} Control of Table Sizes
+
+
+\majorsect{0}{Comparison with Textbook Description}
+This section describes how SPHIGS differs from its textbook
+description, lists new features, features that are not currently
+supported but will be supported in future releases, and lists
+currently known bugs.
+
+\bullitem Viewports: In the textbook figures, viewport boundaries were
+depicted via dashed rectangular outlines.  This has been deemed too
+obtrusive for practical use and has been replaced by a background
+color --- thus, SPHIGS viewports are opaque (a violation of the PHIGS
+standard).  The application can specify a different background color
+for each view.  The default color is white, meaning the viewport
+boundary will not be obvious.  It is suggested that extremely light
+pastel-ish colors be used.  (NOTE: unfortunately, there is currently
+no method for depicting viewport boundaries on black-and-white
+systems.)  Overlapping viewports should be avoided.
+
+\bullitem Rendering and Color: The GOURAUD rendering mode is not currently
+supported; LIT\_FLAT is the current ``quality'' rendering mode.  The
+textbook did not describe how colors are assigned to objects for the
+purposes of shaded rendering in the LIT\_FLAT rendering mode, nor did
+it describe how simulated shading is achieved on monochrome
+implementations.  See section 4.
+
+\bullitem SPHIGS in a windowing environment: When run on X11 or the
+Macintosh, the SPHIGS ``screen'' appears in a window whose size is
+determined by the application at initialization time and may be
+changed by the user via a window manager action.
+
+\bullitem \boldit{Viewing BUG!}  When you call 
+\ttit{SPH\_evaluateViewMappingMatrix} with a projection type of
+ORTHOGRAPHIC, it is possible that the front and back clipping-planes
+distances you specify in that call will be lost.  The problem has a
+simple avoidance mechanism: if you always call
+\ttit{SPH\_setViewRepresentation} immediately after evaluating the
+view matrices, the problem never occurs.
+
+\bullitem Fill areas and polyhedron faces: \boldit{MUST BE CONVEX!} No
+exceptions!  Moreover, this version of SPHIGS does NOT handle faces
+that intersect.
+
+\newpar
+New in this version:
+
+\bullitem SPHIGS now builds transformation matrices with the same column
+orientation as used in Chapters 5 and 6 in the textbook.  They are no
+longer the transpose of the matrices you'd expect to see.  For more
+fun and confusion, see the NOTE at the end of section 3.
+
+\bullitem The \ttit{FLAT} shading model is now available as a rendering mode,
+and multiple point light sources can be defined for the
+\ttit{LIT\_FLAT} mode.  This is described in section 4.
+
+\bullitem Name sets for invisibility are now supported; see section 6.
+Highlighting is still unavailable in the current version of SPHIGS.
+
+\bullitem \ttit{SPH\_copyStructure} has finally been implemented (section 2.2).
+
+\bullitem Pick correlation extensions!!  Correlation is now supported for
+polylines, polymarkers and fill areas.  Also, in the \ttit{WIREFRAME}
+rendering mode, it is no longer necessary to click exactly on
+polyhedra edges; primitives can be correlated anywhere on the surface
+of a facet.
+
+\bullitem Rendering Ills Cured!!  The rendering engine has been entirely
+rewritten using Binary Space Partitioning trees and will correctly
+draw z-ordered scenes with mixed polyline and polyfacet objects.  Fill
+areas are now visible from either side, independent of their surface
+normal.  See section 5.6.
+
+
+\majorsect{1}{States of the System}
+SPHIGS must be enabled before use, and disabled after use.  At any time, SPHIGS
+is in exactly one of the following three operating states:
+\bullitem SPHIGS disabled (initial state)
+\bullitem SPHIGS enabled, no structure open
+\bullitem SPHIGS enabled, structure open
+
+
+\minorsect{1.1}{initializing the system}
+\newsynopsis
+void SPH_begin (int width, int height, int planecount, int shadecount);
+\endsynopsis
+This routine initializes SPHIGS and SRGP, and places SPHIGS in the
+enabled/no-structure-open state.  The virtual-screen window is opened, with
+its initial dimensions (measure in pixels) determined by the first two
+parameters.
+(It can be resized by the user with a window manager, if the underlying SRGP
+platform supports that functionality.)
+The NPC ``unit extent'' (0.0 to 1.0 on both x and y) will map to the largest
+square that fits in this area.
+
+\newpar
+The last two parameters allow the application to request color resources.  This
+is explained in section 4.
+
+
+\nextsynopsis
+void SPH_end (void)
+\endsynopsis
+The virtual screen window is closed, and SPHIGS enters the disabled state.
+
+
+\minorsect{1.2}{controlling screen regeneration}
+Whenever the application changes the structure database, SPHIGS regenerates the
+screen image immediately
+\boldit{unless} the implicit-regeneration mode has been set to 
+\ttit{SUPPRESSED}.  Its
+default value is \ttit{ALLOWED}.  When implicit regeneration is suppressed,
+regeneration can be explicitly forced via the second function below.
+Otherwise, regeneration occurs when the implicit regeneration mode is restored
+to \ttit{ALLOWED}.
+\begincode
+typedef enum \lb{}SUPPRESSED, ALLOWED\rb regenMode;
+void SPH_setImplicitRegenerationMode (regenMode)
+void SPH_regenerateScreen (void)
+\endcode
+
+\newpar
+Double-buffering has been made available as a rendering option.  If
+double-buffering is used, there is no flicker in any viewport since
+each time the scene is redrawn the picture is first generated on an
+off-screen canvas and is then copied to screen.  Double-buffering
+requires a significant amount of memory overhead, but a more serious
+drawback is that rendering speed is lost during the expensive
+copy-pixel step.  Rendering may become prohibitively slow with this
+flag on, so it is provided as an option.
+
+\begincode
+void SPH_setDoubleBufferingFlag(int new_value)
+\endcode
+
+Avoid making quick repeated calls to this function; this is
+wasteful, since SRGP allocates or frees the canvas buffer every time
+the flag is changed.
+
+
+\majorsect{2}{Maintenance of the Structure Database}
+The structure database is composed of two parts:
+
+\bullitem Conceptually, a fixed number of structures exist in the universe, all
+initially empty.  They are indexed by the numbers 0 through
+\ttit{MAX\_STRUCTURE\_ID.}  Because a structure may invoke other
+structures, this set of structures actually is a set of interlocking
+DAGs (directed acyclic graphs) that we call \boldit{networks.}
+
+\bullitem A \itit{view table} having a fixed number of \itit{views}
+exists; the views are indexed by the numbers 0 through
+\ttit{MAX\_VIEW\_INDEX.}  Each view includes 0 or more references
+to networks; a single network can be referenced by more than
+one view.  Not all networks are referenced.  Those that are referenced
+are said to be \itit{posted} and are therefore potentially visible.
+
+\newpar
+There are two genres of editing:
+
+\bullitem \boldit{macro-structure editing} of the structure database:
+posting/unposting structures, deleting structures and networks, etc.
+
+\bullitem \boldit{intra-structure editing:} modification
+of the contents of a single structure
+
+
+\minorsect{2.1}{macro-structure editing}
+The following functions post and unpost.  They may be called only when there
+is no open structure.  The screen is regenerated immediately unless
+automatic regeneration is disabled.
+\begincode
+typedef int structure_ID, view_ID;
+void SPH_postRoot (structure_ID, view_ID);
+void SPH_unpostRoot (structure_ID, view_ID);
+void SPH_unpostAllRoots (view_ID);
+\endcode
+
+
+\minorsect{2.2}{intra-structure editing}
+One must open a structure in order to edit it.  Only one structure may
+be opened at any time.  All structures exist from time zero; one never
+\slantit{creates} a structure, one merely opens an empty structure and edits
+it.  The editing operations are not considered ``official'' until the
+structure is closed, so screen updating is not performed while the
+structure is open.
+\begincode
+void SPH_openStructure (structure_ID);
+void SPH_closeStructure (void);
+\endcode
+
+\newpar
+When a structure is opened, the element pointer is set to point to the very
+last element in the structure.  Since elements are indexed by ascending
+integers, starting with 1, this means the element pointer is initialized to $N$
+(where $N$ is the number of elements in the structure).  If the structure being
+opened is empty, the element pointer is initialized to 0.  The element pointer
+may be moved via the following functions.  Movement to index 0 is useful for
+inserting new elements at the very beginning of a non-empty structure.
+Movement to an index which is meaningless (less than 0 or greater than $N$)
+causes a fatal error.  Movement to a label causes a forward scan through the
+structure starting from (but not including) the current position of the
+element pointer; thus it is typically wise to set the element pointer to 0
+before attempting to move the element pointer to a label.  If the label is not
+found, a fatal error occurs.
+\begincode
+typedef int elementIndex, label_ID;
+void SPH_setElementPointer (elementIndex);
+void SPH_offsetElementPointer (int delta);
+void SPH_moveElementPointerToLabel (label_ID);
+\endcode
+
+\newpar
+When a structure is open for editing, the application may inquire the
+index of the current element:
+\begincode
+elementIndex SPH_inquireElementPointer (void);
+\endcode
+
+\newpar
+The most common form of editing is simply the insertion of new elements into a
+structure.  Whenever an element-generator function is called, the new element
+is placed immediately after the current element, and the element pointer is
+advanced to point to the new element.
+
+\newpar
+Label elements have integer names which must be unique within the 
+structure owning it.  The following function generates a label element.
+
+\begincode
+void SPH_label (label_ID);   \elementgenerator
+\endcode
+
+\itemmm{NOTE:}
+Throughout this document, each presentation of an element-generator routine is
+``highlighted'' by the presence of this symbol:  \elementgenerator
+
+\newpar
+The following functions delete elements and automatically renumber the
+survivors.  In all cases, after the deletion is made, the element pointer is
+moved to point to the element immediately preceding the first element deleted.
+The first function deletes the element indexed by the current value of the
+element pointer.  The second function deletes the elements lying between, and
+including, the elements specified by the two element identifiers.  The first
+identifier must be less than the second one; a fatal error occurs otherwise.
+The third function deletes the elements lying between, but not including, the
+label elements specified.  The first label must appear in the structure before
+the second one, and both must appear after the current value of the element
+pointer; a fatal error occurs otherwise.
+
+\begincode
+void SPH_deleteElement (void);
+void SPH_deleteElementsInRange (elementIndex first, elementIndex second);
+void SPH_deleteElementsBetweenLabels (label_ID first, label_ID second);
+\endcode
+
+\newpar
+It is possible to copy all the elements of a given structure into the
+open structure (immediately after the current element) with the
+following library routine.  The element pointer is then updated to
+point to the last element inserted.  If the specified structure
+happens to be the open structure, its contents are copied into itself.
+
+\begincode
+void SPH_copyStructure (structure_ID);
+\endcode
+
+
+
+\majorsect{3}{Coordinate systems}
+
+\minorsect{3.1}{geometric data types}
+The following data types are defined in order to simplify the storage and
+specification of vectors, points, and matrices:
+
+\begincode
+typedef double point[3], vector[3];
+typedef double matrix[4][4];
+\endcode
+
+\newpar
+Vectors or points may be initialized using this function:
+
+\begincode
+double *SPH_defPoint (pt,  x, y, z)
+double *pt;    \comment{pointer to first of three consecutive doubles}
+double x, y, z;
+\endcode
+
+
+\minorsect{3.2}{viewing transformations}
+The SPHIGS viewing system involves an intermediate coordinate system called the
+VRC (Viewing Reference Coordinates).  This first transformation simply
+reorients the world by specifying a new set of axes: UVN.  The matrix which
+performs this is called the \itit{view-orientation matrix} and can be
+calculated using the following function.  The final argument to the function
+must be a pointer to a matrix (to be initialized by the function) allocated by
+the application.
+
+\begincode
+void
+SPH_evaluateViewOrientationMatrix
+   (point view_ref_point, vector view_plane_normal, vector view_up_vector,
+    matrix vo_matrix);
+\endcode
+
+\newpar
+The next transformation sets up the view volume, which maps VRC to NPC
+(Normalized Projection Coordinates).  To be more specific, it maps the contents
+of the view volume to a paralleliped in NPC space.  (It is recommended, but not
+enforced, that the rectangle lie wholly inside the NPC bounded space
+[0,0]$\rightarrow$[1,1].)  The matrix which performs this is called the
+\itit{view-mapping matrix}.
+
+\begincode
+void 
+SPH_evaluateViewMappingMatrix
+   (double umin, double umax, 
+    double vmin, double vmax,   \comment{boundaries of window on view plane}
+    int proj_type,        \comment{either PERSPECTIVE or ORTHOGRAPHIC}
+    point proj_ref_point,   \comment{in uvn coordinates}
+    double proj_front_clip_distance,
+       double proj_back_clip_distance,  \comment{offsets from VRP on n axis }
+    \comment{3D viewport: in this version, minz and maxz are ignored}
+    double proj_NPCviewport_minx, double proj_NPCviewport_maxx,
+    double proj_NPCviewport_miny, double proj_NPCviewport_maxy,
+    double proj_NPCviewport_minz, double proj_NPCviewport_maxz,
+    matrix vm_matrix);
+\endcode
+
+\newpar
+It is very important to understand that the projection-reference point and the
+window's boundaries (umin, umax, vmin, vmax) are specified NOT in WC, but as
+offsets from the VRP that is set by the orientation matrix.  This means that in
+order to perform an animation which involves only simple camera motion, with no
+change in the ``focal length'' and no strange warpings, all one needs to do is
+change the view-orientation matrix.  The prp will ``follow'' the vrp as the
+view orientation is changed.
+
+\newpar
+Notice that there is no explicit way to specify focal length in this system.
+The distance between the VRP and the PRP can be manipulated to achieve similar
+results.  Be careful!  The $z$ coordinate of the PRP must be positive!  Also,
+if you specify the PRP in such a way that a line between it and the center of
+the view plane is not perpindicular to the view plane, shearing will occur.
+
+\newpar
+The setting of an entry in the view table requires specification of both the
+matrices as well as a re-specification of the NPC viewport (again, with minz
+and maxz ignored):
+
+\begincode
+void
+SPH_setViewRepresentation
+   (int view_index, 
+    matrix vo_matrix, matrix vm_matrix,
+    double clip_NPCviewport_minx, double clip_NPCviewport_maxx, 
+    double clip_NPCviewport_miny, double clip_NPCviewport_maxy,
+    double clip_NPCviewport_minz, double clip_NPCviewport_maxz);
+\endcode
+
+\newpar
+The background color for a view's rectangular region of the screen is white by
+default, but you may change it (on a per-view basis):
+
+\begincode
+void SPH_setViewBackgroundColor (int viewindex, int color);
+\endcode
+
+\newpar
+A viewport can be turned on and off with the following
+functions (disabling a viewport erases it from view):
+
+\begincode
+void SPH_enableView (int viewIndex);
+void SPH_disableView (int viewIndex);
+\endcode
+
+
+\minorsect{3.3}{modeling transformations}
+Each structure has its own modeling coordinate system (MCS); primitives
+specified within it are placed in its MCS.  When the execution of a structure
+(during traversal) begins, its local modeling transformation is initialized to
+the ``identity'' transformation.  When a primitive element is executed, its raw
+coordinates are transformed by the current value of the local modeling
+transformation in order to place it within the MCS.  When a structure-execution
+element is executed, the MCS of the subordinate structure is mapped into the
+local MCS using the local modeling transformation: thus the image of the
+subordinate network is transformed as a single entity to be placed within the
+local MCS.
+
+\newpar
+The following function generates a structure element which, when executed,
+affects the local modeling transformation matrix, either by replacing
+(assigning) it or by concatenating it with a given matrix.
+
+\begincode
+typedef enum \lb{}ASSIGN, PRECONCATENATE, POSTCONCATENATE\rb updateType;
+void SPH_setModelingTransformation (matrix mat, updateType);  \elementgenerator
+\endcode
+
+\newpar
+An application can use the following functions for creating a matrix to be
+stored or to be used to set a modeling transformation.  Rotation, translation,
+scaling, and compositions thereof are supported.  Rotation angles are specified
+in degrees, positive angles representing counter-clockwise rotation.  In all
+functions, the last parameter specifies the application-allocated area (large
+enough to store a 4-by-4 array of \ttit{double}s) in which the function is to
+place the calculated matrix.
+
+\begincode
+void SPH_scale (double scaleX, double scaleY, double scaleZ,  matrix result) 
+void SPH_rotateX (double angleDegrees,  matrix result)
+void SPH_rotateY (double angleDegrees,  matrix result)
+void SPH_rotateZ (double angleDegrees,  matrix result)
+void SPH_translate 
+     (double deltaX, double deltaY, double deltaZ,  matrix result)
+
+void SPH_composeMatrix (matrix mat1, matrix mat2, matrix result)
+\endcode
+
+\newpar
+In the textbook's Pascal code, a matrix could be calculated and made into an
+element in one statement, because Pascal can return arrays:
+\begincode
+   SPH_setModelingTransformation (SPH_scale(5.0,3.0,1.0), ASSIGN);
+\endcode
+\newpar
+It was not possible to design an elegant method in ANSI C for the calculation
+routines to return a matrix in a manner that would allow the same convenience.
+Thus, creating a transformation element requires two C statements (unless the
+matrix is already available):
+\begincode
+   SPH_scale (5.0, 3.0, 1.0,  mat);
+   SPH_setModelingTransformation (mat, ASSIGN);
+\endcode
+\newpar
+The SPHIGS header file \ttit{sphigs.h} defines a macro called
+\ttit{SPH\_setModXform} that can come to the rescue if you abhor the 
+two-statement sequence.  The macro assumes that you have declared and are using
+a matrix called \ttit{temp\_matrix}.  Here I show the usage of the macro for
+the creation of a scale element:
+\begincode
+   SPH_setModXform (SPH_scale(5.0, 3.0, 1.0, temp_matrix), ASSIGN);
+\endcode
+
+\newpar
+\begincode
+void SPH_oldComposeMatrix (matrix mat1, matrix mat2, matrix result)
+\endcode
+\boldit{NOTE:} The original release of SPHIGS used a vector package that
+performed matrix-vector multiplications in the opposite commutative
+order as that described in the text.  The matrix package now correctly
+uses column vectors multipilied to the left of the matrix.
+
+\newpar
+The result of this confusion is that the old version of SPHIGS
+had to internally flip the order of multiplication in order to make
+composite transforms.  Unfortunately, the original version of
+\ttit{SPH\_compose}, which performed simple matrix multiplication, failed to
+perform this reversal.  This has been fixed; the replacement function,
+\ttit{SPH\_composeMatrix}, performs a multiply as you would expect, in the
+same order that you would write it out on paper.
+
+\newpar
+\ttit{SPH\_oldComposeMatrix} is provided for the sake of backward
+compatibility, to which \ttit{SPH\_compose} has been aliased.  This ensures
+that programs written with the original (beta) version of SPHIGS will
+compile and work as intended.
+
+\newpar
+\boldit{THE FINAL WORD: when introducing a new transformation, if you
+PRECONCATENATE (multiply on left) it with any extant transforms, the
+new transformation will occur after any pre-existing ones.  To insert
+a transformation so that it happens before any others, POSTCONCATENATE
+it.  This is consistent with the textbook description, and
+representative of how SPHIGS handles transformations internally.}
+
+\begincode
+Preconcatenation:    XFORM x OLD\_CTM = NEW\_CTM
+Postconcatenation:   OLD\_CTM x XFORM = NEW\_CTM
+\endcode
+
+\newpar
+\begincode
+void SPH_clearModelingTransformation (void)
+\endcode
+The above function will restore the structure's coordinate system to
+that of its parent (or to the identity matrix if the structure is at
+the top level of hierarchy) by clearing any previous transformations.
+This is equivalent to \ttit{ASSIGN}ing the identity matrix.
+
+
+
+\majorsect{4}{Color and Shading}
+SPHIGS provides a device-independent method for dealing with color.  An
+application can load the SPHIGS color table without concern for the number of
+colors actually available, and can assign colors to objects equally carefree.
+SPHIGS maps unavailable entries to white (for interiors) or black (for lines,
+text, markers, etc.).  Moreover, when LIT\_FLAT rendering is used, SPHIGS
+simulates shading (by using bitmap patterns) when it is not possible to use
+true colors for the shading.
+
+\newpar
+The total number of available colors is dependent upon the number of planes
+requested via the third parameter to
+\cmd{SPH\_begin}, and on the capabilities of the underlying hardware.  
+See the SRGP reference manual for information on color planes.
+
+\newpar
+SPHIGS divides up the available colors in this manner: The first two colors are
+fixed at white (0) and black (1); the application may not modify these entries.
+The next $C$ entries (2 through $(C+2)$) are called
+\itit{custom colors} and are application-settable.
+The first $F$ custom colors are called
+\itit{flexicolors}.  When a flexicolor is assigned to the interior of a facet
+or fill area, SPHIGS displays an appropriately darkened shade of that color
+when LIT\_FLAT rendering mode is used.  When a non-flexicolor is assigned to a
+facet or fill area, SPHIGS must simulate shading by using bitmap patterns.
+
+\newpar
+The values of $F$ and $C$ are calculated by SPHIGS based on the total number of
+available SRGP colors and on the value of the 4'th parameter of
+\cmd{SPH\_begin}: the number of shades you wish to be created for 
+each flexicolor.  Obviously: the larger the number of shades per flexicolor,
+the fewer flexicolors SPHIGS will be able to provide.
+
+\newpar
+After \cmd{SPH\_begin} returns, you can inquire the values of $F$ and $C$ by
+examining these global variables: \ttit{NUM\_OF\_FLEXICOLORS} and 
+\ttit{NUM\_OF\_APPL\_SETTABLE\_COLORS}.
+
+\newpar
+Currently, SPHIGS only provides one routine for loading the color table:
+
+\nextsynopsis
+void SPH_loadCommonColor (int colorindex, char *colorname);
+\endsynopsis
+For information on the second parameter, see the SRGP reference manual.  When
+you load a color into a flexicolor entry, SPHIGS automatically generates a
+range of shades for that color.  For this reason, you must not bypass this
+routine by calling SRGP directly.
+
+\newpar
+SPHIGS renders a lit-flat view using a simple lighting model using a single
+point light source (specified in UVN coordinates, and thus attached to the
+camera and mobile as the camera is mobile) and Lambertian reflection.  Ambient
+light is automatically extant as well.  No light-source attenuation is
+considered to exist, and surfaces are not self-occluding.  Because of these
+restrictions, best results occur when the light source is kept well away from
+the scene's objects themselves.  The default position of the light source is
+above and behind the camera at a distance approximating infinity; it thus acts
+as a ``sun'' simulator.
+
+\begincode
+void SPH_addPointLightSource (int viewIndex, int lightIndex,
+		    point position, boolean cameraRelative, 
+		    double intensity, double attenuation)
+void SPH_removePointLightSource (int viewIndex, int lightIndex)
+void SPH_setMaxLightSourceIndex (int index)
+\endcode
+
+\newpar
+These functions allow the application to control multiple
+light sources for any viewport.  Note that this only makes a
+difference when the \ttit{LIT\_FLAT} rendering mode has been selected.  Only
+point lights (also called positional lights) are currently supported.
+
+\newpar
+Each viewport is initialized with a single point light source,
+which moves relative to the camera and is positioned at an infinite
+distance behind and above it.  More light sources can be defined by
+calls to \ttit{SPH\_addPointLightSource}; each viewport can hold up to six
+point light sources (this number is arbitrary and can be changed with
+a call to \ttit{SPH\_setMaxLightSourceIndex} before SPHIGS is initialized).
+
+\newpar
+When the application adds a light source to a viewport, it
+sends a light index that acts as a handle to the new light.  Any light
+that was previously defined under that index is deleted, the new
+light becomes active and the scene is regenerated.
+
+\newpar
+A light can be positioned either in world coordinates or
+relative to the viewport's camera orientation (so that it moves with
+the camera) by setting the "cameraRelative" parameter accordingly.
+The application defines the light's intensity (a standard value is
+1.0) and can specify an optional attenuation factor that controls
+intensity falloff over distance (use 0.0 for no attenuation).
+
+\newpar
+Any light source can be disabled via a call to
+\ttit{SPH\_removePointLightSource}.  The viewport's initial light source is
+defined with an index of zero, and should be a sufficient to
+facilitate object recognition.  Removing all the light sources from a
+viewport is not recommended.
+	
+\begincode
+void SPH_setViewPointLightSource (int viewIndex, double u, double v, double n)
+\endcode
+
+Provided for backward compatibility.  This sets the camera-relative
+position of the first light index (0) for the given viewport.  The
+following calls produce the same effect:
+
+\begincode
+	SPH_setViewPointLightSource (viewID, u, v, n);
+	SPH_addPointLightSource (viewID, 0, SPH_defPoint(p, u,v,n), TRUE, 1.0, 0.0);
+\endcode
+
+
+
+\majorsect{5}{Creation of Graphics Objects}
+
+\minorsect{5.1}{polyLine}
+\begincode
+SPH_polyLine (int vertex_count, point *vertices) \elementgenerator
+\endcode
+
+\newpar
+Attributes affecting the polyLine primitive:
+\begincode
+SPH_setLineStyle (int value)  \elementgenerator  \comment{See SRGP manual.}
+SPH_setLineColor (int value)  \elementgenerator
+SPH_setLineWidthScaleFactor (double scale_factor)  \elementgenerator
+\endcode
+
+
+\minorsect{5.2}{polyMarker}
+\begincode
+SPH_polyMarker (int vertex_count, point *vertices) \elementgenerator
+\endcode
+
+\newpar
+Attributes affecting the polyMarker primitive:
+\begincode
+SPH_setMarkerStyle (int value)  \elementgenerator  \comment{See SRGP manual.}
+SPH_setMarkerColor (int value)  \elementgenerator
+SPH_setMarkerSizeScaleFactor (double scale_factor)  \elementgenerator
+\endcode
+
+
+\minorsect{5.3}{text}
+Only the origin is affected by modeling and viewing transformations;
+the text itself is always horizontal, aligned with the virtual screen
+window.  In this sense it is the equivalent of the ANNOTATION TEXT
+primitive from the PHIGS standard.
+\begincode
+SPH_text (point origin, char *str) \elementgenerator
+\endcode
+
+\newpar
+The attributes affecting text are like their SRGP counterparts.  In fact, you
+must call \ttit{SRGP\_loadFontTable} to load fonts.
+\begincode
+SPH_setTextFont (int font_index)  \elementgenerator 
+SPH_setTextColor (int color_index) \elementgenerator
+\endcode
+
+%%\newpar
+%%\boldit{NOTE: In this version of SPHIGS, text and lines are not 
+%%sorted spatially with solid objects, so it is possible for a text or line
+%%object to be obscured by a polyhedron or fill area that is actually behind it,
+%%when rendered in LIT\_FLAT mode.}
+
+
+\minorsect{5.4}{fill area}
+A fill area must be convex and planar; SPHIGS does not attempt to verify either
+of these conditions.  
+\begincode
+SPH_fillArea (int vertex_count, point *vertices) \elementgenerator
+\endcode
+
+\newpar
+Attributes that affect the appearance of both fill-area and polyhedron objects:
+
+\begincode
+SPH_setInteriorColor (int color_index) \elementgenerator
+SPH_setEdgeColor (int color_index) \elementgenerator
+SPH_setEdgeStyle (int value) \elementgenerator  \comment{same values as for line style}
+SPH_setEdgeFlag (int value) \elementgenerator  \comment{EDGE_VISIBLE or EDGE_INVISIBLE}
+SPH_setEdgeWidthScaleFactor (double scale_factor) \elementgenerator
+\endcode
+
+\newpar
+See section 4 for a description of the color-index attribute.
+
+
+\minorsect{5.5}{polyhedron}
+To create a polyhedron element, you present a complete list of the vertices,
+implicitly indexed from 0 to $(vcount-1)$.  You describe the facets by
+presenting a single array of numbers (SPHIGS data type \ttit{vertex\_index})
+that actually stores a concatenated set of facet descriptions.  Each facet
+description is a sequence of (\itit{V}+1) numbers, where \itit{V} is the number
+of vertices in the facet.  The first \itit{V} numbers are indices into the
+vertex list; the last number is (-1) and acts as a sentinel ending the facet
+specification.  The vertex indices for a facet must be presented in
+counterclockwise order (as seen when looking at the facet's ``outside''
+face).  Because each facet must be a closed polygon, the first vertex in the
+list is implicitly the last as well.
+
+\newpar
+The data type \ttit{vertex\_index} must be used by the application programmer
+in order to guarantee future compatibility.  It is of course \ttit{typedef}'ed
+to either a short or an int in the \ttit{sphigs.h} file.
+
+\newpar
+\boldit{Note: In this beta version of SPHIGS, FACETS MUST BE CONVEX!}
+
+\begincode
+void SPH_polyhedron   \elementgenerator
+   (int vertex_count, int facet_count,
+    point *vertices,  vertex_index *facets);
+\endcode
+
+\newpar
+The appearance of a polyhedron is affected by the same attributes that affect
+the fill-area primitive.
+
+
+\minorsect{5.6}{rendering modes}
+SPHIGS currently supports only two of the rendering modes described in the
+textbook.  The rendering mode is set by the following function:
+
+\begincode
+SPH_setRenderingMode (int value)  \comment{WIREFRAME_RAW, WIREFRAME (default), LIT_FLAT}
+\endcode
+
+%%%%% I REMOVED GOURAUD AND FLAT
+
+\newpar
+The raw wireframe mode renders without performing hidden-surface elimination or
+clipping.  Because of this, strange results (and lots of warning messages)
+occur if objects lie behind the camera.  The default mode (WIREFRAME) performs
+clipping and hidden-surface elimination, but only draws edges.  The most
+expensive mode draws surfaces as filled polygons whose colors are determined by
+lighting/shading algorithms.  (See section 4 of this reference manual for a
+complete description.)
+
+\begincode
+void SPH_setViewRenderAlgorithm (int viewIndex, int algorithm)
+\endcode
+
+\newpar
+The current version of SPHIGS uses a binary-space partitioning
+algorithm to render three-dimensional scenes.  This method is slower,
+but considerably more accurate, than the old version's quick-and-dirty
+Z-sort algorithm.  If your application is interactive and uses fairly simple
+models, you can increase rendering speed by changing the viewport's rendering
+engine to \ttit{RENDER\_PAINTERS}.  To guarantee more accurate rendering, use
+\ttit{RENDER\_BSP} (the default).
+
+\newpar
+NOTE: this routine is provided simply as a matter of
+convenience.  Multiple rendering algorithms will NOT be supported in
+future versions of SPHIGS and writing applications which depend on
+this particular implementation is discouraged.  Also note that
+rendering accuracy is only guaranteed with BSP rendering; bugs in the
+\ttit{RENDER\_PAINTERS} mode are numerous, so use it at your own risk.
+
+
+\minorsect{5.7}{execution of subordinate structures}
+This function inserts a structure-execution element into the currently open
+structure.  The structure referenced by the argument need not already be
+defined, as explained previously, for all unknown structures are implied empty
+structures.
+\begincode
+void SPH_executeStructure (int structureIndex) \elementgenerator
+\endcode
+
+
+
+\majorsect{6}{Dynamic Invisibility and Highlighting}
+
+During traversal, an attribute called the \itit{name set} is maintained.  This
+set may contain any integers that lie between 0 and \ttit{MAX\_NAME}.  The
+following elements add and delete names from the name set during traversal:
+\begincode
+void SPH_addToNameSet (name) \elementgenerator      \itit{you can only add one name at a time}
+void SPH_removeFromNameSet (name) \elementgenerator \itit{you can only delete one name at a time}
+\endcode
+
+\newpar
+Note that the scope of a name set change is local to any given
+structure; any call to \ttit{SPH\_add\-To\-Name\-Set} or
+\ttit{SPH\_remove\-From\-Name\-Set} is passed along to a child (through a
+call to SPH\_execute), but is not carried back to a parent structure.
+
+\newpar
+There is a filter for each viewport that controls visibility during
+traversal (highlighting is not yet supported).  A filter is simply a
+set of names: e.g., any primitives whose name set contains $X$ will
+not be visible if the invisibility filter contains $X$.  These filters
+are not controlled by elements in the mode; rather, application sets
+them whenever it wants to modify the visibility state of any part of
+the model.  When any filter is changed, the screen is updated to
+reflect the new state.
+
+\begincode
+void SPH_addToInvisFilter (name)
+void SPH_removeFromInvisFilter (name)
+\endcode
+
+
+
+\majorsect{7}{Input}
+
+\minorsect{7.1}{control of input devices}
+The locator measure is similar to that of the SRGP locator, but the position is
+a 3D NPC coordinate (with $z=0$), and the index of the non-empty view (i.e.,
+having at least one posted root) with the highest priority (i.e. index)
+that encloses the position is also returned:
+\begincode
+typedef struct \lb
+    point position;
+    int   view_index;
+    int   button_chord[3];
+    int   button_of_last_transition;
+\rb locator_measure;
+\endcode
+
+\newpar
+Control of the input devices is performed a la SRGP.  Any positions are 3D
+NPC points ($z$ ignored) instead of 2D PDC points.
+
+\begincode
+#define SPH_setInputMode SRGP_setInputMode
+#define SPH_waitEvent SRGP_waitEvent
+#define SPH_getKeyboard SRGP_getKeyboard
+#define SPH_sampleKeyboard SRGP_sampleKeyboard
+#define SPH_setKeyboardProcessingMode SRGP_setKeyboardProcessingMode
+#define SPH_setKeyboardEchoColor SRGP_setKeyboardEchoColor
+#define SPH_setKeyboardEchoFont SRGP_setKeyboardEchoFont
+#define SPH_setKeyboardMeasure SRGP_setKeyboardMeasure
+#define SPH_setLocatorEchoCursorShape SRGP_setLocatorEchoCursorShape
+#define SPH_setLocatorButtonMask SRGP_setLocatorButtonMask
+
+void SPH_getLocator (locator_measure*);
+void SPH_sampleLocator (locator_measure*);
+void SPH_setLocatorMeasure (point position);
+void SPH_setKeyboardEchoOrigin (point position);
+\endcode
+
+
+\minorsect{7.2}{pick correlation}
+The NPC point returned from the locator can be sent to the pick-correlation
+utility: 
+
+\begincode
+void SPH_pickCorrelate (point npc_position, int view_index, 
+			pickInformation *pickinfo);
+\endcode
+
+\newpar
+The information is returned in a variable of type \ttit{pickInformation}:
+
+\begincode
+typedef
+   struct \lb
+     int structureID;
+     int elementIndex;
+     int elementType;   \comment{symbolic constants in elementType.h}
+     int pickID;
+   \rb pickPathItem;
+typedef pickPathItem pickPath[MAX_HIERARCHY_LEVEL];
+typedef struct \lb
+     int pickLevel;
+     pickPath path;
+   \rb pickInformation;
+\endcode
+
+\newpar
+When no primitive is close enough to the cursor position, the value of the
+pickLevel field is returned as 0.  When pickLevel is greater than zero, it
+specifies the length of the path from the root to the picked primitive.  In
+this latter case, elements [0] through [pickLevel-1] 
+of the path array return the
+identification of the structure elements involved in the path.  
+Of course,
+elements [0] through [pickLevel-2] will always be structure-execution elements,
+whereas the [pickLevel-1] element will always be an output primitive.  For each
+element, the information presented is: its ID, its index within its parent
+structure, a code presenting the element's type (e.g.,
+ELTYP\_\_EXECUTE\_STRUCTURE, 
+ELTYP\_\_POLYHEDRON), and the pick ID of the element.
+
+\newpar
+The pick ID is an attribute that is local to a structure (not
+inherited).  For this reason, the application can define different
+pick identifiers for each level of hierarchy.  It begins with the
+value 0, and is changed by elements created via:
+
+\begincode
+SPH_setPickIdentifier (int pick_ID);  \elementgenerator
+\endcode
+
+
+
+\majorsect{8}{Control of Table Sizes}
+The tables that store views and structures have default sizes that in many
+cases are acceptable.  You may, however, choose to reduce the size of a table
+to save memory (if you're working on a Mac Plus, for instance) or increase the
+size of a table if you need more entries.  You must change the size of a table
+\itit{before} you initialize SPHIGS!
+
+\newsynopsis
+void SPH_setMaxStructureID (int);
+void SPH_setMaxViewIndex (int);
+void SPH_setMaxNameID (int);
+void SPH_setMaxLightSourceIndex (int);
+\endsynopsis
+See \cmd{sphigs.h} for the defaults for these sizes.
+
+
+\bye
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

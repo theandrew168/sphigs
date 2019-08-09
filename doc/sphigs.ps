@@ -1,0 +1,1003 @@
+%!              for use by dvi2ps Version 2.00
+% a start (Ha!) at a TeX mode for PostScript.
+% The following defines procedures assumed and used by program "dvi2ps"
+% and must be downloaded or sent as a header file for all TeX jobs.
+%
+% $Log:	tex.ps,v $
+% Revision 1.2  89/08/02  10:20:23  neil
+% Fixed problems with lettertray and legaltray
+% Added an a4 mode.
+% 
+% Revision 1.1  89/07/28  10:39:57  neil
+% Initial revision
+% 
+%
+% Compendium of best of various tex.ps files found on various systems,
+% by Neil Hunt, hunt@spar.slb.com, Dec 1988.
+%
+% The following histories (in no particular order) have been collected.
+%
+% -----------------------------------------------------------------------------
+% By:  Neal Holtz, Carleton University, Ottawa, Canada
+%      <holtz@cascade.carleton.cdn>
+%      <holtz%cascade.carleton.cdn@ubc.csnet>
+%      June, 1985
+%      Last Modified: Aug 25/85
+% oystr 12-Feb-1986
+%   Changed @dc macro to check for a badly formed bits in character
+%   definitions.  Can get a <> bit map if a character is not actually
+%   in the font file.  This is absolutely guaranteed to drive the
+%   printer nuts - it will appear that you can no longer define a
+%   new font, although the built-ins will still be there.
+% pam 5-Jan-1988 
+%   Expanded arrays for 256 character gf fonts.
+% -----------------------------------------------------------------------------
+% MIT Edits
+% ?        SAJ     ????
+% ?        CJL&GLR made papersizes device independent
+%                  added more paper sizes
+%                  margin adjustments should be done to printer, not driver!
+% 22oct87  GLR     added pop to @bop1
+%                  paper tray
+% 23oct87  GLR     use Mtrx in paper tray
+%  9apr87  GLR     make sure that {note, letter} are known commands
+% 17may88  GLR     neuter initmatrix
+% 18may88  CJL&GLR shadow defaultmatrix, page size commands
+
+% To convert this file into a downloaded file instead of a header
+% file, uncomment all of the lines beginning with %-%
+
+%-%0000000 			% Server loop exit password
+%-%serverdict begin exitserver
+%-%  systemdict /statusdict known
+%-%  {statusdict begin 9 0 3 setsccinteractive /waittimeout 300 def end}
+%-% if
+
+/TeXDict 200 dict def   % define a working dictionary
+TeXDict begin           % start using it.
+
+                        % units are in "dots" (300/inch)
+/Resolution 300 def
+/Inch  {Resolution mul} def  % converts inches to internal units
+
+/Mtrx 6 array def
+
+%%%%%%%%%%%%%%%%%%%%% Page setup (user) options %%%%%%%%%%%%%%%%%%%%%%%%
+
+% dvi2ps will output coordinates in the TeX system ([0,0] 1" down and in
+% from top left, with y +ive downward).  The default PostScript system
+% is [0,0] at bottom left, y +ive up.  The Many Matrix Machinations in
+% the following code are an attempt to reconcile that. The intent is to
+% specify the scaling as 1 and have only translations in the matrix to
+% properly position the text.  Caution: the default device matrices are
+% *not* the same in all PostScript devices; that should not matter in most 
+% of the code below (except for lanscape mode -- in that, rotations of
+% -90 degrees resulted in the the rotation matrix [ e 1 ]
+%                                                 [ 1 e ]
+% where the "e"s were almost exactly but not quite unlike zeros.
+
+/@letter
+  { userdict   /letter     known {letter} if
+%    statusdict /lettertray known {statusdict begin lettertray end} if
+    initmatrix
+    1 72 mul 10 72 mul translate		% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@note
+  { userdict   /note       known {note} if
+%    statusdict /lettertray known {statusdict begin lettertray end} if
+    initmatrix
+    1 72 mul 10 72 mul translate		% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@a4
+  { userdict   /a4        known {a4} if
+%    statusdict /a4tray known {statusdict begin a4tray end} if
+    initmatrix
+    1 72 mul 10.75 72 mul translate		% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@landscape
+  { initmatrix
+    1 72 mul 1 72 mul translate			% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    -90 rotate
+    Mtrx currentmatrix pop
+  } def
+
+/@legal
+  { userdict   /legal     known {legal} if
+%    statusdict /legaltray known {statusdict begin legaltray end} if
+    initmatrix
+    1 72 mul 13 72 mul translate		% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@11x17
+  { statusdict begin 11x17tray end
+    initmatrix
+    1 72 mul 16 72 mul translate		% Move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@ledger
+  { statusdict begin ledgertray end
+    initmatrix
+    1 72 mul 10 72 mul translate		% move origin to Knuth's Corner
+    72 Resolution div dup neg scale		% change to left handed pixels
+    Mtrx currentmatrix pop
+  } def
+
+/@tray						% n @tray
+  { statusdict /setpapertray known
+      {statusdict begin setpapertray end} {pop}
+    ifelse
+    Mtrx setmatrix				% revert to prev coord system
+  } def
+
+/@manualfeed
+   { statusdict /manualfeed true put
+   } def
+        % n @copies -   set number of copies
+/@copies
+   { /#copies exch def
+   } def
+
+%%%%%%%%%%%%%%%%%%%% Procedure Defintions %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+/@newfont       % id @newfont -         -- initialize a new font dictionary
+  { /newname exch def
+    pop
+    newname 7 dict def          % allocate new font dictionary
+    newname load begin
+        /FontType 3 def
+        /FontMatrix [1 0 0 -1 0 0] def
+        /FontBBox [0 0 1 1] def
+% pam 5-Jan-1988 array enlarged for gf fonts
+        /BitMaps 256 array def
+        /BuildChar {CharBuilder} def
+        /Encoding 256 array def
+        0 1 255 {Encoding exch /.undef put} for
+        end
+    newname newname load definefont pop
+  } def
+
+
+% the following is the only character builder we need.  it looks up the
+% char data in the BitMaps array, and paints the character if possible.
+% char data  -- a bitmap descriptor -- is an array of length 6, of 
+%          which the various slots are:
+
+/ch-image {ch-data 0 get} def   % the hex string image
+/ch-width {ch-data 1 get} def   % the number of pixels across
+/ch-height {ch-data 2 get} def  % the number of pixels tall
+/ch-xoff  {ch-data 3 get} def   % number of pixels below origin
+/ch-yoff  {ch-data 4 get} def   % number of pixels to left of origin
+/ch-tfmw  {ch-data 5 get} def   % spacing to next character
+
+/CharBuilder    % fontdict ch Charbuilder -     -- image one character
+  { /ch-code exch def           % save the char code
+    /font-dict exch def         % and the font dict.
+    /ch-data font-dict /BitMaps get ch-code get def     % get the bitmap descriptor for char
+    ch-data null eq not
+      { ch-tfmw   0   ch-xoff neg   ch-yoff neg   ch-width ch-xoff sub   ch-height ch-yoff sub
+            setcachedevice
+        ch-width ch-height true [1 0  0 1  ch-xoff ch-yoff]
+            {ch-image} imagemask
+      }
+    if
+  } def
+
+
+/@sf            % fontdict @sf -        -- make that the current font
+  { setfont() pop
+  } def
+
+                % in the following, the font-cacheing mechanism requires that
+                % a name unique in the particular font be generated
+
+/@dc            % char-data ch @dc -    -- define a new character bitmap in current font
+  { /ch-code exch def
+% ++oystr 12-Feb-86++
+    dup 0 get
+    length 2 lt
+      { pop [ <00> 1 1 0 0 8.00 ] } % replace <> with null
+    if
+% --oystr 12-Feb-86--
+    /ch-data exch def
+    currentfont /BitMaps get ch-code ch-data put
+    currentfont /Encoding get ch-code 
+       dup (   ) cvs cvn   % generate a unique name simply from the character code
+       put
+  } def
+
+/@bop0           % n @bop0 -              -- begin the char def section of a new page
+  { pop
+  } def
+
+/@bop1           % n @bop1 -              -- begin a brand new page
+  { pop
+    erasepage initgraphics 
+    Mtrx setmatrix
+    /SaveImage save def() pop
+  } def
+
+/@eop           % - @eop -              -- end a page
+  { showpage 
+    SaveImage restore() pop
+  } def
+
+/@start         % - @start -            -- start everything
+  { @letter                             % (there is not much to do)
+  } def
+
+/@end           % - @end -              -- done the whole shebang
+  { end
+  } def
+
+/p              % x y p -               -- move to position
+  { moveto
+  } def
+
+/r              % x r -                 -- move right
+  { 0 rmoveto
+  } def
+
+/s              % string s -            -- show the string
+  { show
+  } def
+
+/c              % ch c -                -- show the character (code given)
+  { c-string exch 0 exch put
+    c-string show
+  } def
+
+/c-string ( ) def
+
+/ru             % dx dy ru -   -- set a rule (rectangle)
+  { /dy exch neg def    % because dy is height up from bottom
+    /dx exch def
+    /x currentpoint /y exch def def   % remember current point
+    newpath x y moveto
+    dx 0 rlineto
+    0 dy rlineto
+    dx neg 0 rlineto
+    closepath fill
+    x y moveto
+  } def
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%     the \special command junk
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   The structure of the PostScript produced by dvi2ps for \special is:
+%         @beginspecial
+%           - any number of @hsize, @hoffset, @hscale, etc., commands
+%         @setspecial
+%           - the users file of PostScript commands
+%         @endspecial
+
+% The @beginspecial command recognizes whether the Macintosh Laserprep
+% has been loaded or not, and redfines some Mac commands if so.
+% The @setspecial handles the users shifting, scaling, clipping commands
+
+% The following are user settable options from the \special command.
+%       d @hsize -      specify a horizontal clipping dimension
+%                       these 2 are executed before the MacDraw initializations
+/@hsize {/hs exch def /CLIP true def} def
+/@vsize {/vs exch def /CLIP true def} def
+%       d @hoffset -    specify a shift for the drwgs
+/@hoffset {/ho exch def} def
+/@voffset {/vo exch def} def
+%       s @hscale -     set scale factor
+/@hscale {/hsc exch def} def
+/@vscale {/vsc exch def} def
+
+/@setclipper
+  { hsc vsc scale
+    CLIP
+      { newpath 0 0 moveto hs 0 rlineto 0 vs rlineto hs neg 0 rlineto
+	closepath clip }
+    if
+  } def
+
+% this will be invoked as the result of a \special command (for the
+% inclusion of PostScript graphics).  The basic idea is to change all
+% scaling and graphics back to defaults, but to shift the origin
+% to the current position on the page.
+
+/@beginspecial          % - @beginspecial -     -- enter special mode
+  { gsave /SpecialSave save def
+
+    % set new origin
+    currentpoint translate 
+    % revert to PostScript Points
+    Resolution 72 div dup neg scale
+
+    /hs 8.5 Inch def
+    /vs 11 Inch def
+    /ho 0 def
+    /vo 0 def
+    /hsc 1 def
+    /vsc 1 def
+    /CLIP false def
+
+    % define some stuff to do nothing
+    /showpage {} def
+    /erasepage {} def
+    /copypage {} def
+    /letter {} def
+    /note {} def
+    /legal {} def
+    /ledger {} def
+    /11x17 {} def
+    /a3 {} def
+    /a4 {} def
+
+    % prevents macdraw from blowing out
+    statusdict /waittimeout known {statusdict /waittimeout 300 put} if
+
+    % neuter flushfile
+    %   make it look for % % E O F instead
+    %   doesn't work for input files...
+    /flushfile
+      {0				% push current state
+       {1 index read not {exit} if	% read a character, quit if end of file
+        (% % E O F) 2 index 2 mul get eq	% character we want?
+          {1 add}			% then bump state
+          {pop 0} ifelse		% else reset state
+        dup 5 eq {exit} if
+       } loop
+      pop pop				% get rid of file designator and state
+      } def
+
+    % force the default matrix to really be the current matrix
+    % after the offset and scaling
+    /initmatrix {xinitmatrix setmatrix} def
+    /defaultmatrix {xinitmatrix exch copy} def
+
+    % force initgraphics to use our initmatrix
+    /initgraphics
+      {initmatrix newpath initclip
+       1 setlinewidth 0 setlinecap 0 setlinejoin
+       [] 0 setdash 0 setgray 10 setmiterlimit} 
+       def
+  } def
+
+/@setspecial    % to setup user specified offsets, scales, sizes (for clipping)
+  { ho vo translate
+    hsc vsc scale
+    CLIP
+      { newpath 0 0 moveto hs 0 rlineto 0 vs rlineto hs neg 0
+	rlineto closepath clip }
+    if
+
+    % neuter initmatrix
+    /xinitmatrix matrix currentmatrix def
+  } def
+
+/@endspecial            % - @endspecial -       -- leave special mode
+  { SpecialSave restore
+    grestore
+  } def
+
+end                     % revert to previous dictionary
+TeXDict begin @start
+%%Title: sphigs
+%%Creator: dvieps
+%%EndProlog
+1 @bop0
+[ 432 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 65 @dc
+[<> 0 0 0 -1 0.000] 78 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 49 @dc
+[<> 0 0 0 -1 0.000] 46 @dc
+[<> 0 0 0 -1 0.000] 48 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 56 @dc
+[<> 0 0 0 -1 0.000] 57 @dc
+[<> 0 0 0 -1 0.000] 51 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 68 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 105 @dc
+[<> 0 0 0 -1 0.000] 100 @dc
+[<> 0 0 0 -1 0.000] 70 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 107 @dc
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 112 @dc
+[<> 0 0 0 -1 0.000] 82 @dc
+[<> 0 0 0 -1 0.000] 46 @dc
+[<> 0 0 0 -1 0.000] 66 @dc
+[<> 0 0 0 -1 0.000] 119 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 84 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 105 @dc
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 112 @dc
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 103 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 39 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[<> 0 0 0 -1 0.000] 100 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 98 @dc
+[<> 0 0 0 -1 0.000] 121 @dc
+[<> 0 0 0 -1 0.000] 117 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 12 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 92 @dc
+[<> 0 0 0 -1 0.000] 46 @dc
+[<> 0 0 0 -1 0.000] 34 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+[<> 0 0 0 -1 0.000] 119 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 121 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 65 @dc
+[<> 0 0 0 -1 0.000] 78 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+[<> 0 0 0 -1 0.000] 89 @dc
+[<> 0 0 0 -1 0.000] 55 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 117 @dc
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 124 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 70 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 68 @dc
+[<> 0 0 0 -1 0.000] 87 @dc
+[<> 0 0 0 -1 0.000] 49 @dc
+[<> 0 0 0 -1 0.000] 57 @dc
+[<> 0 0 0 -1 0.000] 48 @dc
+[<> 0 0 0 -1 0.000] 79 @dc
+[<> 0 0 0 -1 0.000] 69 @dc
+[<> 0 0 0 -1 0.000] 58 @dc
+[<> 0 0 0 -1 0.000] 113 @dc
+[<> 0 0 0 -1 0.000] 82 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+[<> 0 0 0 -1 0.000] 107 @dc
+[<> 0 0 0 -1 0.000] 122 @dc
+[<> 0 0 0 -1 0.000] 50 @dc
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 51 @dc
+[<> 0 0 0 -1 0.000] 52 @dc
+[<> 0 0 0 -1 0.000] 53 @dc
+[<> 0 0 0 -1 0.000] 106 @dc
+[<> 0 0 0 -1 0.000] 76 @dc
+[<> 0 0 0 -1 0.000] 54 @dc
+[<> 0 0 0 -1 0.000] 56 @dc
+1 @bop1
+302 -115 p 1291 2 ru
+302 -54 p 22 r -1 r 21 r 132 r 22 r -1 r 21 r 22 r 302 -29 p 1291 2 ru
+752 91 p 15 r -3 r -2 r -2 r 14 r 747 141 p 15 r 15 r -1 r -176 241 p 10 r 11 r 11 r -1 r 10 r 11 r 11 r 11 r 1 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r -176 290 p 16 r 17 r 18 r 17 r 0 r 0 r 17 r 17 r 0 r 17 r 17 r 0 r 16 r 0 r 0 r 18 r 17 r 17 r 29 r 17 r 1 r 17 r 17 r 18 r 17 r -176 340 p 17 r 21 r 19 r 19 r 18 r 19 r 33 r -3 r 18 r 0 r 17 r 19 r 19 r 18 r 19 r 19 r -1 r 18 r 20 r 19 r -176 390 p -2 r -2 r 19 r -3 r -3 r 17 r -2 r 16 r 18 r -2 r 16 r 17 r 18 r -2 r -4 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r -176 440 p 13 r 14 r -1 r 13 r -2 r -151 552 p 57 r 14 r 14 r -3 r 0 r 1 r 14 r 1 r -176 614 p 2250 2 ru
+-151 670 p 57 r 14 r 14 r 13 r 14 732 p 58 r 14 r 14 r 14 794 p 58 r 0 r 13 r 13 r -176 856 p 2250 2 ru
+-151 912 p 57 r 0 r 13 r 13 r 14 r 14 r 14 975 p 58 r 14 r 14 1037 p 58 r 0 r 13 r -176 1099 p 2250 2 ru
+-151 1155 p 57 r 1 r 14 r 14 1217 p 58 r 14 r 14 r -1 r 1 r 14 1279 p 58 r 14 r 14 1341 p 58 r 1 r 14 r -176 1403 p 2250 2 ru
+-151 1459 p 57 r 14 r 14 r -176 1521 p 2250 2 ru
+-151 1577 p 57 r 14 r 14 r 13 r 3 r 14 1640 p 58 r 1 r 14 1702 p 58 r 1 r 0 r 14 1764 p 58 r 14 1826 p 58 r 14 r 14 1889 p 58 r 1 r 14 1951 p 58 r 14 r 1 r 14 2013 p 58 r 14 r 14 r 1 r 14 r -176 2075 p 2250 2 ru
+-151 2131 p 57 r 14 r 0 r -2 r 13 r 14 r 0 r -176 2193 p 2250 2 ru
+-151 2249 p 57 r 14 2311 p 58 r 0 r 13 r 13 r 14 r 14 2373 p 58 r 0 r 13 r -176 2435 p 2250 2 ru
+-151 2491 p 57 r 0 r 13 r 13 r -2 r 13 r @eop
+2 @bop0
+[ 360 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 65 @dc
+[<> 0 0 0 -1 0.000] 78 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 49 @dc
+[<> 0 0 0 -1 0.000] 46 @dc
+[<> 0 0 0 -1 0.000] 48 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 56 @dc
+[<> 0 0 0 -1 0.000] 57 @dc
+[<> 0 0 0 -1 0.000] 51 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+[<> 0 0 0 -1 0.000] 50 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 48 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 112 @dc
+[<> 0 0 0 -1 0.000] 105 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[<> 0 0 0 -1 0.000] 119 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 84 @dc
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+[<> 0 0 0 -1 0.000] 98 @dc
+[<> 0 0 0 -1 0.000] 107 @dc
+[<> 0 0 0 -1 0.000] 68 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 11 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 15 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 86 @dc
+[<> 0 0 0 -1 0.000] 124 @dc
+[<> 0 0 0 -1 0.000] 85 @dc
+[<> 0 0 0 -1 0.000] 59 @dc
+[<> 0 0 0 -1 0.000] 88 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 86 @dc
+[<> 0 0 0 -1 0.000] 105 @dc
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 119 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[<> 0 0 0 -1 0.000] 103 @dc
+[<> 0 0 0 -1 0.000] 66 @dc
+[<> 0 0 0 -1 0.000] 85 @dc
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 33 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 101 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 117 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 86 @dc
+[<> 0 0 0 -1 0.000] 105 @dc
+[<> 0 0 0 -1 0.000] 119 @dc
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 112 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[<> 0 0 0 -1 0.000] 103 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+[<> 0 0 0 -1 0.000] 82 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 83 @dc
+[<> 0 0 0 -1 0.000] 84 @dc
+[<> 0 0 0 -1 0.000] 69 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+[<> 0 0 0 -1 0.000] 79 @dc
+[<> 0 0 0 -1 0.000] 78 @dc
+[<> 0 0 0 -1 0.000] 88 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 33 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 70 @dc
+[<> 0 0 0 -1 0.000] 76 @dc
+[<> 0 0 0 -1 0.000] 65 @dc
+[<> 0 0 0 -1 0.000] 84 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 121 @dc
+[<> 0 0 0 -1 0.000] 87 @dc
+[<> 0 0 0 -1 0.000] 69 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 66 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 49 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 121 @dc
+2 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 938 2 ru
+-166 -29 p 86 r 0 r 15 r 17 r -3 r 0 r 1 r 17 r -176 48 p 14 r 14 r 1 r 15 r 0 r 14 r 14 r 15 r 15 r 15 r 1 r 1 r 15 r 15 r 14 r 15 r 15 r 15 r 14 r 15 r 15 r 0 r -176 98 p 0 r 14 r 14 r 14 r 1 r 13 r 2 r 13 r 14 r 14 r 14 r 14 r 14 r 0 r 12 r 0 r 13 r -135 160 p 41 r 1 r 20 r 15 r 14 r 1 r 2 r 14 r 15 r 1 r 15 r 1 r 14 r 0 r 14 r 15 r 14 r 15 r 14 r 21 r 15 r 14 r 1 r -93 210 p 16 r 1 r 17 r -1 r 16 r 17 r 17 r 17 r 16 r 17 r 1 r 17 r 17 r 0 r 16 r 16 r 0 r 16 r 17 r 17 r -1 r 17 r 17 r 1 r 17 r -93 260 p 15 r 16 r 17 r 16 r 16 r 17 r 26 r 16 r 16 r 16 r 2 r 16 r 16 r 0 r 15 r 0 r 15 r 17 r 16 r 0 r 15 r -93 310 p 16 r 17 r 17 r 17 r 18 r 17 r 17 r 1 r 17 r 1 r 17 r 17 r 17 r 1 r 17 r 0 r 27 r 17 r 17 r 17 r 17 r 17 r 0 r -93 360 p 16 r 17 r 1 r 18 r 28 r 18 r -3 r 17 r 17 r 18 r 0 r 16 r 17 r 1 r 17 r 18 r 17 r 1 r 17 r 1 r 18 r -93 409 p -1 r 13 r 18 r 0 r 13 r 1 r 14 r 14 r 1 r 13 r 0 r -1 r -135 472 p 41 r 14 r 14 r 20 r 14 r 0 r 13 r 15 r 1 r 14 r 14 r 15 r -1 r 14 r 1 r 14 r 3 r 12 2 ru
+12 r -2 r 13 r 14 r 15 r 0 r 13 r 0 r -93 521 p 10 r 1 r 17 r 11 r 1 r 1 r 11 r 11 r 11 r 1 r 11 r 0 r 9 r 11 r 11 r 11 r 11 r 2 r 11 r 11 r 10 r 1 r 11 r 11 r 11 r 11 r -93 571 p 11 r 3 r 12 2 ru
+12 r -2 r 11 r 13 r 1 r 13 r 12 r 13 r 13 r 1 r 12 r 0 r 12 r -1 r 12 r 13 r 12 r 0 r -1 r 11 r 13 r 1 r 0 r 11 r 0 r -93 621 p 13 r 14 r -135 683 p 41 r 14 r 14 r 13 r 0 r 13 r 0 r -1 r 17 r 14 r 14 r 14 r 14 r 14 r 14 r 0 r 12 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r 0 r -93 733 p 11 r 12 r 12 r 12 r 0 r 11 r 12 r 12 r 12 r 12 r 12 r 12 r 0 r 11 r 1 r 12 r 0 r 11 r -1 r 11 r 12 r 12 r 12 r 12 r 0 r 11 r -93 783 p -135 845 p 41 r 17 r 15 r 15 r 0 r 14 r 15 r 3 r 13 2 ru
+13 r 15 r 15 r 15 r 3 r 15 r 0 r 0 r 15 r 15 r -2 r 14 r 15 r -93 895 p 0 r 13 r 12 r 13 r 0 r 12 r 12 r 0 r 12 r 12 r 13 r 0 r 12 r 1 r 12 r 13 r 13 r 12 r 13 r 1 r 13 r 18 r 12 r 13 r 13 r 12 r -93 945 p -1 r -1 r 13 r 0 r 18 r 14 r 0 r 13 r 0 r -2 r 13 r 15 r 2 r 13 2 ru
+13 r 14 r 15 r 14 r -2 r 14 r 14 r 14 r -93 995 p 13 r 14 r -1 r 13 r 1 r -135 1057 p 41 r 13 r 13 r 14 r 1 r 13 r 18 r 15 r 16 r 13 r 13 r 18 r 0 r -1 r 12 r 14 r 0 r 12 r 13 r 13 r 1 r 14 r -93 1107 p 13 r 14 r 13 r 0 r -176 1206 p 13 r 14 r 13 r 0 r -135 1269 p 41 r 19 r -1 r 18 r 19 r 18 r 19 r 19 r 18 r 19 r 19 r 0 r 17 r 19 r 19 r 18 r 19 r 19 r 18 r 19 r 19 r -93 1318 p 0 r 1 r 24 r 16 r 15 r 16 r 16 r 15 r 1 r 16 r 16 r 15 r 16 r 0 r 14 r 2 r 15 r 16 r 24 r -3 r 15 r 16 r 15 r 16 r 16 r 16 r -93 1368 p 13 r 14 r 13 r 14 r 14 r 14 r -135 1430 p 41 r 15 r 15 r 15 r 1 r 15 r 15 r 0 r 14 r 0 r -2 r 14 r 15 r 15 r 15 r 1 r 15 r 15 r 0 r 14 r 1 r 0 r 14 r 0 r 14 r 15 r 15 r 2 r 15 r 15 r 15 r -93 1480 p 1 r 13 2 ru
+14 r 13 r 2 r 18 r 14 r 14 r 1 r 14 r 13 r 14 r -135 1543 p 41 r 17 r 17 r 17 r 0 r -1 r 16 r 17 r 0 r 16 r 1 r 18 r 17 r 17 r 29 r -1 r 16 r 17 r 17 r 0 r -2 r 16 r 17 r 17 r 0 r 16 r 0 r 16 r -93 1592 p -135 1655 p 41 r 2 r 13 2 ru
+14 r 13 r 14 r 14 r 1 r 14 r 0 r 13 r 14 r -135 1717 p 41 r 0 r 13 r 15 r 20 r 15 r 15 r -1 r 14 r 1 r 15 r 14 r 1 r 15 r 1 r 0 r 14 r 14 r 15 r 20 r 15 r 15 r 14 r -93 1767 p 9 r 10 r 1 r 11 r 10 r 10 r 10 r 10 r 10 r 10 r 0 r 9 r 10 r 10 r 1 r 10 r 11 r 0 r 9 r 10 r 1 r 10 r 10 r 0 r -93 1817 p 13 r 14 r 13 r 14 r 14 r -135 1879 p 41 r 14 r 14 r 20 r 14 r 14 r 14 r 14 r 1 r 15 r -1 r 14 r 14 r 14 r 14 r 14 r 0 r 13 r 14 r 14 r -93 1929 p 14 r 0 r 14 r 16 r 15 r 16 r 15 r 1 r 16 r 15 r 1 r 16 r 2 r 23 r 15 r 16 r 15 r 0 r 14 r 16 r 15 r 16 r -93 1978 p 0 r 0 r 13 r 14 r 13 r 14 r 19 r 13 r 14 r -184 2109 p 2 58 ru
+-183 2053 p 560 2 ru
+-166 2100 p 86 r 17 r 16 r 17 r -176 2178 p 14 r 0 r 14 r 1 r 15 r 15 r 1 r 15 r 16 r 15 r 15 r 15 r 22 r 0 r 14 r -1 r 14 r 16 r 15 r 15 r 15 r 15 r 15 r 15 r 15 r 0 r 14 r -176 2228 p 0 r 14 r -135 2290 p 41 r 14 r 14 r 13 r -135 2352 p 41 r 14 r 14 r 13 r 14 r 1 r -135 2415 p 41 r 14 r 14 r 13 r 2 r @eop
+3 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 46 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 122 @dc
+[<> 0 0 0 -1 0.000] 103 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 100 @dc
+[<> 0 0 0 -1 0.000] 95 @dc
+[<> 0 0 0 -1 0.000] 98 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+[<> 0 0 0 -1 0.000] 59 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 47 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 50 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 117 @dc
+[<> 0 0 0 -1 0.000] 108 @dc
+[<> 0 0 0 -1 0.000] 115 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 85 @dc
+[<> 0 0 0 -1 0.000] 68 @dc
+[<> 0 0 0 -1 0.000] 79 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 123 @dc
+[<> 0 0 0 -1 0.000] 125 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 13 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 66 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 117 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 88 @dc
+[<> 0 0 0 -1 0.000] 67 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 116 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 114 @dc
+[<> 0 0 0 -1 0.000] 107 @dc
+[<> 0 0 0 -1 0.000] 46 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 98 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 78 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 109 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+[<> 0 0 0 -1 0.000] 100 @dc
+[<> 0 0 0 -1 0.000] 58 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 100 @dc
+3 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 620 2 ru
+-166 -29 p 86 r 17 r 16 r -176 69 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r 22 r 22 r -93 131 p 15 r 16 r 17 r 16 r 16 r 0 r -4 r 16 r 16 r 16 r 16 r 16 r 17 r 1 r 16 r 26 r 16 r -93 181 p 12 r 0 r 12 r 13 r 1 r 13 r 13 r 14 r 13 r 13 r 13 r 13 r 13 r 13 r 0 r 12 r 13 r 13 r 0 r -1 r 12 r 18 r 13 r -93 231 p 0 r 13 r 12 r 0 r 11 r 13 r 12 r 13 r 12 r 0 r 12 r 12 r 13 r 12 r 13 r 0 r 11 r 13 r 1 r 12 r 13 r 0 r -4 r 17 r 13 r -93 281 p 13 r 0 r 12 r 14 r 14 r 14 r 14 r 1 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -176 381 p 13 r 14 r -1 r -1 r 13 r 14 r 0 r 13 r 13 r 14 r 14 r 14 r 14 r 18 r 14 r 14 r 14 r 14 r 13 r -176 480 p 21 r 21 r -93 542 p 13 r 14 r 13 r 0 r 13 r 14 r 14 r 14 r 13 r 0 r 13 r 14 r 14 r -184 673 p 2 58 ru
+-183 617 p 805 2 ru
+-166 664 p 86 r 17 r 16 r -176 742 p -1 r 16 r 17 r 17 r 0 r 16 r 17 r 17 r 18 r 17 r 18 r 17 r 17 r 17 r 17 r 17 r -176 792 p 8 r 1 r 10 r 10 r 1 r 9 r 10 r 9 r 0 r 10 r 9 r 10 r -2 r 9 r 9 r 0 r 10 r 9 r 10 r 9 r 10 r -176 842 p 19 r 21 r 1 r 20 r 21 r 20 r 21 r 20 r 21 r 20 r 1 r 0 r 37 r 22 r 21 r 1 r 21 r 20 r 20 r -176 891 p 13 r 1 r 14 r 14 r 13 r 14 r 0 r -93 974 p 21 r 21 r 22 r 22 r -93 1016 p 21 r 21 r -93 1057 p 21 r 21 r -176 1182 p 10 r 11 r 2 r 11 r 11 r 0 r -2 r 10 r 11 r 12 r 11 r 18 r 11 r 11 r 11 r 12 r 12 r 11 r 11 r 0 r -1 r 10 r 11 r 0 r 11 r 1 r -176 1232 p 10 r 0 r 10 r 10 r 11 r 11 r 11 r 0 r 10 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r 11 r -1 r -2 r 10 r 11 r 11 r 11 r 11 r 11 r 17 r -176 1282 p 9 r 11 r 10 r 0 r 10 r 0 r 9 r 11 r 10 r 0 r -1 r 10 r 10 r 11 r 10 r 11 r 0 r -1 r 9 r 11 r 10 r 11 r 1 r 10 r 11 r 10 r -176 1331 p 13 r 1 r 0 r 13 r -1 r 13 r 19 r 13 r 0 r 13 r 1 r 14 r 0 r 13 r 0 r 13 r 13 r 14 r 14 r 14 r 14 r 14 r 13 r 0 r 13 r 14 r 14 r -93 1414 p 21 r 21 r -93 1489 p -1 r 11 r 11 r 0 r 11 r 1 r 12 r 12 r 12 r 11 r 13 r 12 r 12 r -1 r 12 r 11 r 0 r 11 r 1 r 12 r 12 r 12 r 12 r -1 r -2 r 11 r 12 r 0 r -176 1539 p 13 r 14 r 13 r 14 r 0 r -184 1660 p 2 48 ru
+-183 1614 p 949 2 ru
+-166 1660 p 86 r 17 r 16 r 17 r 16 r -176 1729 p 13 r 14 r 13 r 14 r 1 r 14 r 14 r 0 r -1 r 13 r -135 1791 p 41 r -3 r 13 r 13 r 13 r 0 r -1 r 0 r 13 r 14 r 13 r 13 r 13 r 14 r -1 r 13 r 13 r 13 r 0 r -3 r 17 r 13 r 13 r 14 r -1 r 13 r 13 r 0 r -1 r 0 r 13 r -93 1841 p 14 r 2 r 13 2 ru
+13 r 3 r 13 2 ru
+13 r 15 r 14 r 15 r 15 r -1 r 14 r 0 r -1 r -1 r 13 r 15 r 15 r 14 r 15 r 15 r 14 r 15 r 15 r 14 r 15 r -93 1891 p -1 r 0 r 0 r 13 r -1 r -1 r 13 r 14 r 14 r 14 r 13 r 0 r 13 r 14 r 0 r -2 r -135 1953 p 41 r 14 r 16 r 17 r 0 r 14 r 14 r 15 r 0 r -2 r 1 r 14 r 15 r 17 r 15 r 15 r 14 r 15 r 14 r 0 r 14 r 14 r 0 r -1 r 0 r 14 r 15 r 14 r 3 r 13 2 ru
+13 r 3 r 13 2 ru
+13 r -93 2003 p -1 r 12 r 13 r 12 r 13 r 13 r 13 r 13 r 13 r 0 r -1 r 12 r 13 r 13 r 0 r -1 r 11 r 13 r 2 r 12 r 13 r 0 r 12 r 13 r 13 r 13 r 18 r 13 r -93 2053 p -1 r -1 r 12 r 14 r 19 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 1 r 14 r -2 r -2 r 17 r 14 r 14 r 14 r 1 r 0 r 13 r -176 2152 p 13 r 14 r -1 r -1 r 13 r 14 r 14 r -135 2214 p 41 r 17 r 16 r 15 r 15 r 15 r 21 r 1 r 1 r 15 r 16 r 15 r 15 r 15 r 0 r -2 r -93 2264 p -135 2327 p 41 r 0 r 14 r 19 r 1 r 14 r 14 r 14 r -1 r -1 r 13 r 14 r 14 r 14 r -184 2457 p 2 58 ru
+-183 2401 p 655 2 ru
+-166 2448 p 86 r 17 r -176 2526 p 10 r 0 r 10 r 11 r 2 r 11 r 11 r 1 r 18 r 11 r 0 r 10 r 1 r 12 r 11 r 11 r 11 r 12 r 11 r 11 r 1 r 12 r 17 r 11 r 12 r 11 r -176 2576 p 13 r 14 r 13 r 14 r 14 r -93 2659 p 21 r 21 r 22 r -93 2700 p 21 r 21 r 22 r -93 2742 p 21 r 21 r 22 r -93 2783 p 21 r 21 r @eop
+4 @bop0
+[<> 0 0 0 -1 0.000] 52 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 97 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 14 @dc
+[ 300 ] / @newfont
+ @sf
+[<> 0 0 0 -1 0.000] 78 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 113 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 122 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 51 @dc
+4 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 624 2 ru
+-166 -29 p 86 r 17 r -176 48 p 15 r 0 r 16 r 1 r 16 r 17 r 16 r 17 r 16 r 17 r 16 r 26 r 17 r 16 r 17 r 0 r 15 r 1 r 17 r 1 r 16 r 17 r 0 r 15 r 26 r 17 r 16 r 17 r -176 98 p 14 r 15 r 15 r -1 r 14 r 17 r 15 r 15 r 14 r 15 r 1 r 15 r 15 r 0 r 13 r 15 r 15 r 15 r 21 r 15 r 15 r 1 r 15 r 14 r -176 148 p 13 r 14 r -1 r 13 r 14 r 14 r 14 r 14 r 13 r 14 r 1 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r 13 r 14 r 1 r -93 231 p 21 r 21 r -93 272 p 21 r 21 r -176 397 p 12 r 14 r 14 r 13 r 1 r 14 r 13 r 0 r 13 r 1 r 0 r 12 r 14 r 14 r 13 r 1 r 0 r 13 r 13 r 14 r 0 r 12 r 14 r 0 r 12 r 14 r 13 r 19 r 13 r 0 r 13 r -176 447 p 12 r 0 r 13 r 13 r 0 r 12 r 14 r 13 r 14 r 13 r 14 r 13 r 0 r 12 r 1 r 0 r 13 r 13 r 14 r 13 r 18 r 13 r 18 r 14 r 13 r 0 r -1 r 0 r 13 r -176 497 p -1 r 10 r 12 r 11 r 18 r 12 r 11 r 12 r 1 r 12 r 1 r 11 r 12 r 0 r -4 r 11 r 12 r 0 r 10 r 1 r 0 r 11 r 11 r 12 r 11 r 18 r 12 r 0 r 10 r 1 r 0 r -176 546 p -1 r 14 r 1 r 15 r 0 r -2 r 14 r 15 r 15 r 0 r 14 r 22 r 0 r -2 r -1 r 14 r 15 r 15 r 15 r 15 r 15 r 15 r 15 r 15 r 0 r 14 r 14 r 15 r 0 r 14 r 1 r -176 596 p 13 r 15 r 0 r 13 r 21 r 0 r -1 r -1 r 13 r 15 r 14 r 15 r 0 r 14 r 14 r 15 r 14 r 15 r 14 r 15 r 15 r 14 r 5 r 14 r 15 r 15 r 14 r -176 646 p -1 r -1 r -2 r 15 r 15 r 15 r 1 r 16 r 15 r 15 r 0 r 14 r 15 r 16 r 15 r 15 r 15 r 16 r 15 r 15 r 15 r 16 r -1 r 15 r 1 r 15 r -176 696 p 13 r 0 r 14 r 1 r 0 r 14 r 0 r 13 r 15 r 14 r 0 r 14 r 14 r 15 r 15 r 14 r 0 r 14 r 1 r 0 r 13 r 15 r 14 r 2 r 14 r 15 r 14 r 0 r -1 r 14 r 14 r 0 r 14 r 1 r 0 r -176 746 p 13 r 14 r 1 r 18 r 14 r 14 r 1 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 1 r -93 829 p 21 r 21 r 22 r -93 870 p 21 r 21 r -93 912 p 21 r 21 r 22 r -93 953 p 21 r 21 r -176 1078 p 13 r 14 r 13 r 14 r 1 r 14 r 14 r 14 r 14 r 14 r -1 r 13 r 14 r 14 r 14 r 14 r 13 r 0 r 13 r 0 r -93 1161 p 21 r 21 r -176 1285 p 13 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 0 r 13 r 0 r 13 r 14 r 19 r 0 r 13 r 14 r 0 r -176 1335 p 13 r 15 r 14 r 15 r 14 r 0 r 14 r 14 r 14 r 15 r 14 r 15 r 0 r 13 r 0 r 13 r 15 r 14 r 0 r 14 r 1 r 0 r 13 r 15 r -2 r 14 r -176 1385 p 0 r 0 r 13 r 14 r 13 r 14 r 0 r -176 1484 p 0 r 13 r 0 r 12 r 0 r -1 r 12 r 0 r 12 r 13 r 0 r 12 r 0 r 12 r 1 r 13 r 13 r 14 r 13 r 13 r 0 r 12 r 18 r 13 r 0 r 12 r 13 r 13 r -176 1534 p 0 r 14 r 0 r -93 1617 p 21 r 21 r 109 r -81 1704 p 153 r 13 r 13 r 1 r 0 r 12 r 0 r 12 r 0 r 12 r 13 r 13 r 0 r 12 r 13 r 13 r 0 r 12 r -1 r 12 r 14 r 72 1754 p 14 r 14 r -1 r 1 r 46 r -176 1854 p 10 r 0 r 10 r 11 r 11 r 0 r 10 r 11 r 12 r -1 r -1 r 0 r 11 r 12 r -1 r 17 r 11 r 11 r 12 r 11 r 11 r 11 r 12 r 11 r -176 1904 p -1 r 12 r 2 r -1 r 13 r 14 r 0 r -1 r 12 r 14 r 1 r 0 r 13 r 13 r 14 r 0 r 13 r 13 r 14 r 14 r 13 r 0 r 13 r 18 r 14 r 14 r 14 r -176 1954 p 15 r 0 r 14 r 16 r 0 r 15 r 16 r -1 r 15 r -1 r 15 r 16 r 15 r 0 r 15 r 1 r 0 r 24 r 15 r 16 r 16 r 16 r 16 r -1 r 15 r 16 r 1 r 0 r -1 r -176 2003 p 15 r 16 r 16 r 0 r 15 r 1 r 16 r 0 r 15 r 16 r -1 r -1 r 15 r 0 r 15 r 0 r 24 r 15 r 16 r 0 r 15 r 0 r 15 r 1 r 16 r 16 r 16 r 16 r 16 r -176 2053 p 13 r 15 r 15 r 1 r 14 r 21 r 15 r 14 r 15 r 15 r 14 r 0 r 14 r 14 r 1 r 0 r -1 r 14 r 15 r 14 r 15 r 15 r 1 r 14 r 0 r -176 2103 p 0 r 20 r 15 r 14 r 1 r 15 r -1 r 14 r 1 r 14 r 15 r 14 r 15 r 1 r 14 r 15 r 14 r 15 r 14 r 1 r 15 r -1 r 14 r 1 r 14 r 15 r 14 r 0 r 14 r -2 r -176 2153 p 13 r 14 r -1 r 13 r 1 r 0 r 13 r 14 r 14 r 14 r 1 r 14 r -93 2236 p 21 r 21 r -93 2277 p 21 r 21 r 22 r 22 r 22 r -93 2319 p 21 r 21 r 22 r 22 r 22 r -176 2443 p 14 r 16 r 1 r 16 r 16 r -1 r 15 r 16 r 15 r 0 r 15 r 16 r 15 r 0 r 15 r 15 r 0 r 15 r 15 r 2 r 15 r 16 r 16 r 15 r 16 r 0 r 14 r 0 r -176 2493 p 12 r 12 r 0 r 12 r 13 r 18 r 13 r 0 r 11 r 1 r 0 r 12 r 13 r 13 r 1 r 13 r 12 r 2 r -1 r 12 r 13 r 13 r 13 r -1 r 12 r 18 r 13 r 13 r 1 r -176 2543 p 13 r 1 r 14 r 14 r 1 r 13 r 14 r 1 r 14 r 14 r 14 r 0 r -1 r 13 r 13 r 14 r 0 r 13 r -93 2626 p 21 r 21 r -184 2757 p 2 58 ru
+-183 2701 p 528 2 ru
+-166 2747 p 86 r 1 r 0 r 16 r @eop
+5 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 53 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 91 @dc
+[<> 0 0 0 -1 0.000] 93 @dc
+[<> 0 0 0 -1 0.000] 52 @dc
+[<> 0 0 0 -1 0.000] 42 @dc
+[<> 0 0 0 -1 0.000] 122 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 12 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 45 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 91 @dc
+[<> 0 0 0 -1 0.000] 93 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 33 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 103 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 106 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 69 @dc
+[<> 0 0 0 -1 0.000] 84 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[<> 0 0 0 -1 0.000] 86 @dc
+[<> 0 0 0 -1 0.000] 79 @dc
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 65 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 107 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 11 @dc
+[<> 0 0 0 -1 0.000] 51 @dc
+[<> 0 0 0 -1 0.000] 58 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 122 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 122 @dc
+5 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 605 2 ru
+-166 -29 p 86 r 17 r 16 r 0 r 0 r -176 48 p 13 r 0 r 12 r 14 r 0 r 0 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 1 r 14 r 13 r 0 r 13 r 1 r 0 r 13 r 14 r -93 131 p 21 r 21 r 22 r -93 173 p 21 r 21 r -176 297 p -4 r 13 r 14 r 1 r 0 r 13 r 0 r 13 r 1 r 14 r 13 r 14 r 14 r -93 380 p 21 r 21 r 44 r 22 r 22 r -93 422 p 21 r 612 r -1 r 14 r 15 r 14 r 15 r -1 r -2 r 14 r -1 r -2 r 13 r -93 463 p 21 r 21 r 22 r -184 594 p 2 58 ru
+-183 538 p 662 2 ru
+-166 584 p 86 r 17 r -1 r -176 665 p 13 r 15 r 14 r 14 r 0 r -1 r -1 r 13 r 15 r 0 r 13 r 1 r 15 r 14 r 14 r 15 r 0 r 13 r 15 r 14 r 1 r -176 715 p 13 r 14 r 15 r 14 r 0 r 13 r 15 r -1 r 14 r 0 r 13 r 1 r 14 r 15 r 14 r 14 r 15 r 19 r 14 r 15 r 14 r 0 r 13 r 1 r 15 r -176 765 p 12 r 14 r 14 r 14 r 19 r 13 r 14 r 1 r 14 r 13 r 14 r 14 r -1 r 13 r 18 r 14 r 14 r 0 r 12 r 14 r 13 r -176 815 p -1 r 13 r 1 r 14 r 13 r 2 r -1 r 13 r 14 r 14 r 14 r 14 r 1 r 14 r 13 r 0 r 13 r 14 r 14 r 1 r 14 r 0 r 12 r 14 r -93 898 p -93 939 p -28 981 p 21 r 22 r 22 r 21 r 22 r -6 1022 p 21 r -176 1147 p 14 r 16 r 15 r 16 r 15 r 16 r 16 r -1 r 15 r 0 r 15 r 15 r 0 r 15 r 15 r 16 r 15 r 3 r 15 r 1 r 24 r -3 r 15 r 1 r -176 1196 p 11 r 1 r 13 r 12 r 12 r 13 r -1 r -1 r 11 r 13 r 12 r 12 r 0 r 11 r 12 r 13 r 1 r 12 r 12 r 13 r 18 r 12 r 12 r 13 r 12 r 12 r -176 1246 p 18 r 18 r 19 r 19 r 19 r 19 r 19 r 18 r 2 r 18 r 19 r 0 r 0 r 34 r 18 r 19 r 0 r 18 r 1 r 19 r 19 r 18 r 19 r -176 1296 p 14 r 5 r -93 1379 p -93 1421 p -28 1462 p 21 r 22 r 22 r -6 1504 p 21 r 22 r 21 r 467 r -1 r 13 r 15 r 15 r 15 r 15 r -6 1545 p 21 r 549 r 14 r 15 r 15 r -2 r -6 1587 p 21 r 670 r 15 r 15 r -1 r -2 r -2 r -6 1628 p 21 r 58 1670 p 22 r 427 r 15 r -1 r 14 r 15 r 15 r 14 r 514 1711 p 15 r -1 r 14 r 15 r 15 r 14 r 15 r 15 r 15 r -1 r 14 r -1 r -2 r -6 1753 p 21 r 22 r 21 r -6 1794 p 21 r 22 r 21 r -6 1836 p 21 r 22 r 21 r -6 1877 p 21 r -176 2002 p 16 r 18 r 0 r 16 r 2 r -1 r 17 r 18 r 17 r 18 r 17 r 3 r 17 r 2 r -1 r 17 r 18 r 17 r 0 r 17 r 1 r 17 r 19 r 18 r -176 2052 p 11 r 12 r 1 r 12 r 13 r 12 r 0 r 11 r 12 r 12 r 12 r 12 r 12 r 12 r 13 r 12 r 12 r 0 r 11 r 12 r 0 r 11 r 18 r 12 r 12 r 12 r 12 r -176 2101 p 15 r 1 r 17 r 16 r 17 r 0 r 15 r 0 r -1 r -1 r 15 r 17 r 16 r 17 r 17 r 16 r 17 r 0 r 15 r 17 r 16 r 1 r 17 r 16 r 17 r 16 r -176 2151 p -1 r 12 r 14 r 14 r 13 r 14 r 13 r 14 r 0 r 12 r 14 r 0 r 12 r 19 r 13 r 14 r 13 r 0 r 13 r 13 r 14 r 14 r 13 r 14 r 0 r 12 r -176 2201 p -1 r -176 2301 p 13 r 13 r 14 r 14 r 14 r 13 r 0 r -1 r 13 r 14 r 1 r 13 r 2 r 13 r 14 r 14 r 14 r 18 r 14 r 14 r 1 r 0 r -2 r 13 r 14 r 14 r 13 r 14 r 14 r -176 2350 p 0 r 12 r 13 r 12 r 0 r -1 r 11 r 12 r 18 r 13 r 17 r 13 r 14 r 1 r 12 r 13 r 12 r 12 r 0 r 11 r 2 r 12 r 1 r 0 r 17 r 12 r 13 r 0 r 11 r 1 r 12 r -176 2400 p 14 r 14 r 0 r 14 r 15 r -1 r -1 r 14 r 15 r 14 r 15 r 1 r 0 r -1 r 14 r 15 r 14 r 15 r 0 r 14 r 14 r 15 r 15 r 14 r 15 r 15 r 1 r 15 r 15 r 14 r 15 r 15 r -176 2450 p 13 r 1 r -176 2550 p 13 r 14 r 14 r 14 r 0 r 13 r 14 r 14 r 14 r 15 r 14 r 1 r 14 r 14 r 1 r 14 r 14 r 14 r 14 r 0 r 13 r 15 r 14 r 1 r 14 r 14 r 14 r -176 2600 p 0 r 14 r 14 r 14 r 13 r 14 r 14 r @eop
+6 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 54 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 71 @dc
+[<> 0 0 0 -1 0.000] 89 @dc
+[<> 0 0 0 -1 0.000] 90 @dc
+[<> 0 0 0 -1 0.000] 53 @dc
+6 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-93 -34 p -93 6 p -28 48 p 21 r -6 89 p 21 r 22 r 21 r -6 131 p 21 r 22 r 21 r -6 172 p 21 r 22 r 21 r -6 214 p 21 r 22 r 21 r -176 339 p 12 r 0 r 12 r 12 r 13 r 13 r 13 r 13 r 13 r 13 r 13 r 13 r 13 r 13 r 0 r 12 r 13 r 13 r -1 r 12 r 0 r 12 r 0 r 12 r 13 r 13 r 13 r 1 r -176 388 p -93 471 p 21 r 21 r 22 r 22 r 22 r -176 596 p 13 r 1 r 14 r 14 r 1 r 13 r 14 r 14 r 14 r 14 r 14 r 14 r -1 r 13 r 14 r 14 r 14 r 1 r 14 r 14 r 13 r 14 r -93 679 p 21 r 21 r 22 r -93 720 p 21 r 21 r 22 r -184 851 p 2 58 ru
+-183 795 p 697 2 ru
+-166 842 p 86 r 1 r 17 r 0 r -176 922 p -1 r 14 r 15 r 15 r 15 r -1 r 14 r 2 r 15 r 1 r 15 r 15 r 15 r -1 r 14 r 2 r 15 r 14 r 15 r 15 r 15 r 15 r 15 r 15 r -176 972 p 19 r 20 r 21 r 20 r 20 r 21 r 0 r -2 r 20 r 1 r 22 r 20 r 1 r 21 r 1 r 20 r 20 r 21 r 20 r 20 r 21 r 0 r -2 r -176 1022 p 17 r 14 r 13 r 0 r 13 r 0 r 12 r 14 r 13 r 14 r 0 r 12 r 2 r 13 r 14 r 13 r 0 r 13 r 13 r 0 r 13 r -1 r 12 r 14 r 13 r 1 r -176 1072 p 0 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r 17 r 18 r 17 r 17 r 17 r 0 r 16 r 17 r 17 r 18 r -176 1121 p 14 r 15 r 1 r 15 r 15 r 15 r 1 r 15 r 0 r 14 r 15 r 1 r 15 r 15 r 15 r 15 r 2 r 15 r 1 r 15 r 21 r -1 r 14 r 15 r 16 r 15 r -176 1171 p 0 r 14 r 0 r -1 r 12 r 14 r 14 r 14 r 14 r 14 r -1 r -1 r 13 r 14 r 1 r 14 r 14 r 14 r 13 r 2 r 13 r -176 1271 p 10 r 0 r 10 r 12 r 11 r 12 r 11 r 0 r 10 r 0 r 11 r 11 r 12 r 12 r 11 r 1 r 11 r 2 r 11 r 11 r -176 1321 p 13 r 0 r 12 r 14 r 14 r 14 r 14 r 0 r 12 r 14 r 14 r 14 r 14 r 0 r 12 r -93 1404 p 21 r 21 r 22 r 22 r 22 r -93 1445 p 21 r 21 r 22 r 22 r 87 r -176 1570 p 8 r 10 r 10 r 9 r 10 r 0 r 8 r 10 r 10 r 9 r 10 r 9 r 10 r 1 r 10 r 9 r 10 r 10 r 1 r 9 r 10 r 10 r 9 r 10 r 1 r 10 r -176 1620 p 9 r 11 r 10 r 9 r 1 r 10 r 9 r 10 r 1 r 17 r 9 r 10 r 9 r 2 r 9 r 9 r 11 r 1 r 0 r 8 r -176 1669 p -1 r 15 r 0 r 0 r 0 r 16 r 27 r 17 r 17 r 17 r 17 r 17 r 16 r 1 r 17 r 17 r 1 r 17 r 16 r -176 1719 p 13 r 14 r 13 r 14 r 0 r 13 r 0 r 13 r 13 r 0 r 14 r 14 r 0 r 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -93 1802 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r 44 r 22 r -93 1844 p 21 r 21 r 22 r 44 r 22 r -93 1885 p 21 r 21 r 22 r 44 r 22 r -93 1927 p 21 r 21 r 22 r 44 r 22 r -93 1968 p 21 r 15 2010 p 22 r 21 r 22 r 22 r 22 r 43 r 22 r -93 2093 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r -176 2217 p 12 r 14 r 1 r 1 r 14 r 0 r 12 r 1 r 14 r 14 r 13 r 14 r 1 r 13 r 14 r 13 r 14 r 0 r 12 r 14 r 0 r 12 r 14 r 13 r 0 r 13 r 1 r 14 r -1 r 13 r -176 2267 p 13 r 0 r -28 2350 p 21 r 22 r -176 2475 p 13 r 0 r 12 r 14 r 1 r 14 r 14 r 14 r 14 r -1 r 13 r 1 r 14 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r -176 2525 p -1 r 12 r 0 r 13 r 13 r 14 r 0 r -2 r 18 r 0 r 12 r 14 r 13 r 14 r 0 r 12 r 14 r 0 r -2 r 13 r 14 r -1 r 13 r 13 r 14 r 14 r -176 2574 p 13 r 0 r -3 r -28 2657 p 21 r 22 r 22 r 43 r -28 2699 p 21 r 22 r @eop
+7 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 55 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 72 @dc
+[<> 0 0 0 -1 0.000] 70 @dc
+[<> 0 0 0 -1 0.000] 73 @dc
+[<> 0 0 0 -1 0.000] 65 @dc
+[<> 0 0 0 -1 0.000] 76 @dc
+[<> 0 0 0 -1 0.000] 87 @dc
+[<> 0 0 0 -1 0.000] 82 @dc
+[<> 0 0 0 -1 0.000] 68 @dc
+[<> 0 0 0 -1 0.000] 104 @dc
+[<> 0 0 0 -1 0.000] 102 @dc
+[<> 0 0 0 -1 0.000] 44 @dc
+[<> 0 0 0 -1 0.000] 121 @dc
+[<> 0 0 0 -1 0.000] 80 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 112 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+[<> 0 0 0 -1 0.000] 120 @dc
+[<> 0 0 0 -1 0.000] 98 @dc
+[<> 0 0 0 -1 0.000] 118 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 58 @dc
+[<> 0 0 0 -1 0.000] 61 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 96 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 67 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 43 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 70 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 13 @dc
+7 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-176 -76 p 15 r 17 r 16 r 17 r 16 r 17 r 16 r 17 r 16 r 3 r 13 2 ru
+13 r 16 r 17 r 16 r 17 r 16 r 17 r 16 r 16 r 0 r 16 r 16 r -176 -26 p -1 r -1 r -2 r 11 r 18 r 12 r 12 r 12 r 12 r -1 r 11 r 0 r -1 r 11 r 12 r 12 r 12 r 11 r 12 r 12 r 12 r 3 r 13 2 ru
+13 r 0 r 18 r 11 r 12 r 0 r -176 23 p 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 0 r -28 106 p 21 r 22 r 22 r 21 r 22 r -93 264 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r -93 339 p 18 r 18 r 19 r 19 r 18 r 19 r 19 r 18 r 0 r 18 r 0 r -2 r 17 r 19 r 1 r 19 r 0 r 17 r 0 r 18 r 19 r -176 388 p 0 r 13 r -1 r -1 r 12 r 12 r 13 r 12 r 1 r 13 r 12 r 13 r 18 r 13 r 12 r 0 r -2 r 11 r 0 r 12 r 12 r 13 r 12 r 0 r 11 r 0 r -176 438 p 13 r 14 r 13 r 14 r 14 r -176 538 p 9 r 11 r 10 r 11 r 10 r 11 r 10 r 11 r 11 r -1 r 10 r 10 r 11 r 10 r 11 r 0 r 9 r 11 r 10 r 11 r 10 r 0 r 10 r 10 r 11 r 10 r 0 r -176 588 p 0 r 17 r 26 r -2 r 16 r 17 r 16 r 0 r 16 r 17 r 2 r 13 2 ru
+13 r 0 r 17 r 0 r 16 r 1 r 17 r 16 r 17 r 0 r -176 637 p 14 r 15 r 1 r 15 r 15 r 0 r 21 r 15 r 15 r 2 r 15 r 15 r 15 r 0 r 14 r 16 r 2 r 13 2 ru
+13 r 0 r 16 r 1 r 15 r 15 r 0 r 14 r -176 687 p -1 r 13 r -1 r 13 r 1 r 14 r 14 r 14 r 14 r 14 r 13 r 0 r 13 r 0 r 13 r 14 r 13 r 14 r 14 r 1 r -176 787 p 1 r 13 2 ru
+14 r 16 r 17 r 0 r 16 r 17 r 16 r 0 r 16 r 17 r 0 r -1 r 16 r -1 r -3 r 16 r 17 r 0 r 16 r 3 r 13 2 ru
+13 r 16 r 17 r 1 r 17 r 28 r -176 837 p 13 r 14 r 13 r 14 r 14 r 14 r 14 r 1 r 14 r 0 r 12 r 14 r 14 r 14 r 14 r 14 r -1 r 13 r 14 r 0 r -176 936 p 18 r 19 r 0 r 18 r 19 r 0 r 0 r 19 r 19 r 20 r 20 r 19 r -1 r 19 r -3 r -4 r 18 r 0 r 18 r -176 986 p 14 r 16 r 16 r -1 r 15 r -1 r 15 r 16 r 15 r 16 r 15 r 16 r 1 r 16 r 15 r 0 r 14 r 16 r 21 r -3 r 15 r -176 1036 p 17 r 19 r 18 r 18 r 19 r 1 r 19 r 1 r 18 r 0 r 17 r 19 r -3 r -4 r 18 r 28 r 19 r 18 r 0 r 17 r -176 1086 p 15 r 1 r 1 r 16 r 16 r 16 r 0 r -2 r 15 r 16 r 0 r 15 r 16 r 16 r 16 r -1 r -4 r -93 1169 p 86 r 22 r 22 r 2 r 13 2 ru
+13 r 22 r 22 r 3 r 13 2 ru
+13 r -93 1210 p 64 r 3 r 13 2 ru
+13 r 22 r 22 r 21 r 22 r 3 r 13 2 ru
+13 r -93 1368 p 21 r 21 r -93 1443 p 14 r 1 r 0 r -2 r 14 r 15 r 15 r 14 r 15 r 15 r 1 r 15 r 14 r 15 r 15 r 14 r 15 r 0 r 14 r 14 r 15 r 15 r 0 r -1 r 13 r 15 r 15 r -176 1492 p 17 r 18 r 18 r 17 r 18 r 0 r 17 r 18 r 0 r -1 r 17 r 0 r 16 r 18 r 0 r 17 r 18 r 31 r 18 r 18 r -2 r -1 r 17 r 18 r 0 r 18 r -176 1542 p -1 r -1 r 12 r -184 1673 p 2 58 ru
+-183 1617 p 509 2 ru
+-166 1663 p 86 r 0 r 15 r 17 r -176 1742 p 17 r 0 r 17 r 18 r 1 r 0 r 17 r 1 r 18 r 18 r 18 r 18 r 31 r 18 r 18 r 18 r 18 r 18 r 18 r 18 r -176 1792 p 12 r 13 r 13 r 13 r 0 r -1 r 0 r 13 r 13 r 13 r 13 r 0 r -2 r 12 r 13 r 13 r 13 r 13 r 13 r 3 r 13 r 13 r 18 r 13 r -176 1841 p -1 r -3 r 15 r 0 r 14 r 15 r 15 r 16 r 0 r 14 r 15 r 0 r 14 r 16 r 15 r 16 r 0 r 15 r 23 r -1 r -1 r 15 r 15 r 3 r 12 2 ru
+12 r -2 r 14 r 15 r -176 1891 p 13 r 14 r -1 r 13 r 14 r 0 r 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 1 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -176 1991 p 9 r 10 r 0 r -1 r 0 r 10 r 10 r 0 r -2 r 9 r 10 r 11 r 1 r 0 r 9 r 1 r 10 r 10 r 0 r -1 r 0 r 10 r 11 r 10 r 10 r 10 r 10 r 11 r 10 r 10 r 0 r 3 r 13 2 ru
+13 r 0 r -176 2041 p 13 r 14 r 13 r 14 r 14 r 14 r 14 r 0 r 17 r 14 r 14 r 0 r 12 r 14 r 0 r 13 r 14 r 14 r 13 r 14 r -176 2140 p 9 r 10 r 10 r 10 r 0 r -2 r 9 r 10 r 10 r 10 r 17 r 10 r 10 r 0 r -2 r 10 r 10 r 10 r 10 r 10 r 10 r 10 r 10 r 0 r 9 r 11 r 10 r -176 2190 p -1 r 12 r 14 r 1 r 13 r 14 r -1 r 18 r 13 r 14 r 16 r 0 r 12 r 14 r 13 r 0 r 12 r 8 r 13 r 14 r 13 r 15 r -1 r 15 r 14 r 13 r -176 2240 p 13 r 15 r 20 r 15 r 14 r 15 r 14 r -1 r 3 r 20 r 15 r 14 r 15 r 14 r 15 r 14 r 15 r 0 r 13 r 15 r 14 r 15 r 14 r 15 r 14 r -176 2290 p -1 r 14 r 16 r 16 r 0 r 15 r 15 r 16 r 16 r 16 r 16 r 2 r 12 2 ru
+12 r -2 r 15 r 16 r 1 r 15 r 16 r 24 r 16 r 16 r 16 r -176 2340 p 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -1 r 13 r 0 r 13 r 14 r 0 r 12 r 14 r 14 r -176 2439 p 14 r -2 r 14 r 15 r 20 r 15 r 18 r 15 r 15 r -1 r 14 r 15 r 15 r 15 r 14 r 15 r 0 r -1 r 0 r 15 r 15 r -1 r -2 r 14 r 0 r 13 r 15 r 15 r 15 r 15 r -2 r 14 r -176 2489 p 14 r 16 r 16 r 15 r 0 r 3 r 13 2 ru
+13 r 0 r 22 r 15 r 0 r -1 r 0 r 16 r 15 r 16 r 0 r 14 r 16 r 16 r 1 r 15 r 16 r 16 r -1 r 15 r 24 r -1 r 21 r 16 r -176 2539 p 13 r 0 r -2 r 1 r 13 r 14 r 14 r 1 r 14 r 14 r 14 r 0 r 12 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r -1 r -176 2638 p 12 r 0 r 3 r 13 2 ru
+13 r 0 r 14 r 13 r 0 r 13 r 13 r 14 r 13 r -1 r 13 r 13 r 20 r 13 r 17 r -1 r 13 r 14 r 13 r 14 r -2 r 18 r 2 r 13 2 ru
+13 r 3 r 13 2 ru
+13 r -176 2688 p 13 r 2 r 13 2 ru
+13 r 3 r 13 2 ru
+13 r 3 r 13 2 ru
+13 r 2 r 13 2 ru
+13 r 0 r -176 2788 p -1 r -4 r 13 r 14 r 14 r 0 r 12 r 14 r 14 r 14 r 14 r 14 r 13 r @eop
+8 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 79 @dc
+[<> 0 0 0 -1 0.000] 106 @dc
+[<> 0 0 0 -1 0.000] 76 @dc
+8 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-176 -26 p 21 r 21 r 22 r 22 r 22 r -93 35 p -4 r 11 r 13 r 12 r 12 r 12 r 12 r 12 r 12 r 0 r 11 r 12 r 0 r 17 r 12 r 0 r 11 r 12 r 12 r 12 r 0 r 11 r 12 r 12 r 0 r -3 r -93 85 p 13 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 19 r -2 r 13 r 14 r 14 r 0 r 13 r 0 r 13 r 14 r -1 r 13 r 14 r 15 r -1 r -93 135 p 13 r 0 r 12 r -2 r -176 235 p 12 r 13 r 13 r 13 r 13 r 13 r 13 r 13 r 0 r 12 r 2 r 13 r 13 r 13 r 13 r 1 r 0 r 12 r 0 r 12 r 13 r 1 r 13 r 13 r 13 r 2 r -176 285 p 16 r 0 r 16 r 0 r 16 r 17 r 17 r 17 r 17 r 17 r 18 r 17 r 17 r 17 r 17 r 17 r 0 r 0 r 17 r 28 r 0 r -1 r 16 r 0 r 16 r 17 r -176 334 p 14 r 0 r 14 r 15 r 0 r 21 r 15 r -1 r 14 r 0 r 14 r 15 r 15 r 15 r 16 r 15 r 15 r 15 r 15 r 1 r 22 r 15 r -176 384 p 11 r 13 r 1 r 13 r 12 r 1 r 13 r 12 r 13 r 0 r 11 r 13 r 12 r 0 r 12 r 0 r 11 r 0 r -1 r -1 r 11 r 13 r 12 r 13 r 2 r 12 r 0 r 17 r 13 r -176 434 p 0 r 17 r 17 r 18 r -1 r 17 r 17 r 17 r 1 r 0 r -1 r 16 r 17 r 1 r 17 r 18 r 17 r 17 r 17 r 17 r 0 r 16 r 0 r 18 r 17 r 0 r 16 r 18 r 17 r 17 r -176 484 p -1 r -93 567 p 21 r 21 r 22 r 22 r 22 r -6 608 p 21 r 22 r 21 r -6 650 p 21 r 22 r 21 r -93 691 p 21 r 21 r 22 r 22 r 22 r -93 733 p 21 r 21 r 22 r -176 857 p 9 r 11 r 0 r 9 r 11 r 11 r 10 r 0 r 10 r 0 r 9 r 0 r 10 r 10 r 11 r 0 r 9 r 1 r 18 r 10 r 11 r 11 r 10 r 0 r 10 r 10 r -176 907 p 10 r 10 r 3 r 13 2 ru
+13 r 11 r 11 r 1 r 10 r 11 r 1 r 11 r 18 r 10 r 1 r 0 r 10 r 0 r 10 r 10 r 11 r 1 r 11 r 0 r 10 r 10 r 0 r 10 r 1 r -176 1007 p -1 r 10 r 1 r 11 r 11 r 11 r 11 r 11 r 11 r 1 r 0 r 10 r -1 r 10 r 12 r 0 r 10 r 0 r -2 r 10 r 0 r 10 r 11 r 11 r 11 r 11 r 11 r 1 r 11 r 11 r 11 r -176 1057 p 14 r 1 r 15 r 15 r 1 r 0 r -1 r 14 r 22 r 15 r 0 r 14 r 15 r 15 r 1 r 15 r 15 r 0 r 14 r 15 r 15 r 2 r 13 2 ru
+13 r 0 r 16 r 0 r 14 r 1 r 15 r -176 1106 p 12 r 12 r 13 r 13 r 1 r 0 r 11 r 0 r 12 r 13 r 12 r 0 r -1 r 0 r 13 r 13 r 13 r 12 r 13 r 1 r 13 r 0 r 11 r 13 r 13 r 13 r 12 r 3 r 13 2 ru
+13 r -176 1156 p 0 r 14 r 14 r 14 r -176 1256 p 14 r 15 r 15 r 15 r 16 r -1 r 15 r 15 r 15 r 15 r 1 r 16 r 15 r 15 r 15 r 0 r 14 r 15 r 15 r 16 r 15 r 15 r 15 r 15 r 15 r 15 r 0 r 22 r 0 r -176 1306 p -1 r 13 r 13 r 0 r 13 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -1 r 13 r 1 r 14 r 0 r 13 r 14 r 14 r 13 r 14 r -176 1405 p 17 r 0 r 18 r 19 r 1 r 18 r 2 r 18 r 19 r 19 r -1 r 18 r 1 r 19 r 19 r -1 r 18 r 19 r 18 r 2 r 18 r 19 r 0 r 17 r 19 r 19 r 18 r 0 r -1 r -176 1455 p 16 r 17 r 17 r 0 r 16 r 18 r 17 r 0 r 16 r 17 r -2 r 27 r 17 r 18 r 17 r 17 r 0 r 16 r 0 r -1 r 16 r -176 1505 p 13 r -1 r 13 r 14 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r 0 r 13 r 14 r 14 r 0 r 13 r 0 r -1 r 13 r 14 r 0 r -2 r 13 r 14 r 15 r 14 r -176 1555 p 13 r 0 r -176 1654 p -1 r 14 r 0 r 14 r 15 r 15 r 1 r 15 r 15 r 15 r 16 r 15 r 15 r 2 r 13 2 ru
+13 r 0 r 23 r 15 r 1 r 15 r 15 r 0 r 14 r 15 r 15 r -176 1704 p 17 r 19 r 18 r 18 r 20 r 18 r 19 r 1 r 18 r 19 r -1 r 18 r 18 r 18 r 3 r 18 r 32 r 0 r 17 r 19 r 18 r 0 r 17 r 19 r 18 r -176 1754 p 0 r 14 r 14 r 14 r -93 1837 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r 22 r 22 r -93 1912 p -1 r 16 r 18 r 0 r -2 r 17 r 0 r -4 r 29 r 18 r 17 r 18 r -1 r 17 r 1 r 18 r 17 r 18 r 17 r 0 r 17 r 17 r 18 r 17 r 18 r 0 r -176 1962 p 0 r 18 r 14 r 0 r 13 r 14 r 1 r 14 r 14 r 13 r -93 2045 p 21 r 21 r 22 r 22 r -93 2086 p 21 r 21 r 22 r 22 r 22 r 22 r 21 r -184 2217 p 2 58 ru
+-183 2161 p 727 2 ru
+-166 2207 p 86 r 17 r 16 r 17 r -184 2339 p 2 58 ru
+-183 2283 p 343 2 ru
+-166 2330 p 86 r 1 r -93 2421 p 21 r 21 r 22 r 22 r 65 r -176 2545 p -1 r 13 r 13 r 14 r 1 r 14 r 0 r -93 2628 p 21 r 21 r 88 r 564 r -1 r 14 r -1 r 14 r -93 2670 p 21 r 21 r 88 r -93 2711 p 21 r 21 r 88 r @eop
+9 @bop0
+[<> 0 0 0 -1 0.000] 12 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 121 @dc
+[<> 0 0 0 -1 0.000] 95 @dc
+[<> 0 0 0 -1 0.000] 76 @dc
+[<> 0 0 0 -1 0.000] 78 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 118 @dc
+[<> 0 0 0 -1 0.000] 99 @dc
+[<> 0 0 0 -1 0.000] 111 @dc
+[<> 0 0 0 -1 0.000] 117 @dc
+[<> 0 0 0 -1 0.000] 110 @dc
+[<> 0 0 0 -1 0.000] 116 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 0 @dc
+9 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1250 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 401 2 ru
+-166 -29 p 86 r 1 r 0 r -1 r -93 61 p 21 r 21 r 22 r 22 r 65 r -176 185 p -1 r 13 r 13 r 14 r 1 r 0 r 13 r 0 r -93 268 p 21 r 21 r 88 r 542 r -1 r 14 r 0 r 14 r -93 310 p 21 r 21 r 88 r -93 351 p 21 r 21 r 88 r -184 466 p 2 42 ru
+-183 426 p 250 2 ru
+-166 466 p 86 r -176 535 p 15 r 17 r 16 r 17 r 16 r 0 r 15 r 2 r 16 r 17 r 16 r 18 r 16 r 17 r 16 r 17 r -1 r -1 r 16 r 0 r 16 r 16 r 17 r -176 585 p 13 r 14 r -1 r 18 r 14 r 13 r 14 r 14 r 14 r 14 r -1 r -2 r 13 r 14 r 14 r -3 r -3 r 13 r 14 r -1 r 13 r 14 r 14 r 14 r -93 668 p 21 r 21 r 22 r 22 r 65 r -176 793 p 13 r 14 r 13 r 14 r 14 r 0 r 13 r 14 r -1 r 13 r 0 r 18 r 13 r 14 r 0 r 13 r 0 r 13 r 13 r 3 r 13 2 ru
+13 r 14 r 14 r 14 r -1 r -93 876 p 21 r 21 r 88 r -93 917 p 21 r 21 r 66 r -184 1038 p 2 48 ru
+-183 992 p 322 2 ru
+-166 1038 p 86 r 17 r -1 r -176 1107 p 13 r 14 r 13 r 0 r 13 r 1 r 14 r 0 r -1 r 13 r 13 r 14 r 14 r 1 r 14 r 14 r 14 r 14 r -1 r 13 r 14 r 14 r 14 r -93 1190 p 21 r 21 r 22 r 22 r 65 r -176 1314 p -1 r 13 r 13 r 14 r 14 r 1 r 14 r 14 r 1 r 14 r 14 r 14 r 1 r 14 r 2 r -93 1397 p 21 r 21 r 66 r -93 1439 p 21 r 21 r 66 r -93 1481 p 21 r 21 r 66 r 495 r 15 r 15 r 15 r 15 r 15 r -93 1522 p 21 r 21 r 66 r 402 r 15 r 14 r -93 1564 p 21 r 21 r 66 r -176 1688 p 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r 13 r -184 1819 p 2 58 ru
+-183 1763 p 397 2 ru
+-166 1809 p 86 r 1 r -176 1890 p -4 r 19 r 19 r 19 r 1 r 19 r 0 r 20 r 0 r 18 r 0 r 18 r 19 r 19 r 19 r 20 r 19 r 0 r 19 r 19 r 20 r 19 r 19 r 19 r 0 r 2 r 12 r 13 r -176 1940 p -4 r 16 r 1 r 16 r 16 r 16 r 0 r 15 r 0 r 15 r 16 r 16 r 0 r 15 r 17 r -1 r -1 r 0 r 17 r 16 r 16 r 0 r 0 r 16 r 3 r 13 2 ru
+13 r 0 r 16 r 16 r 16 r 16 r -176 1990 p 15 r 16 r 15 r 16 r 25 r 0 r 14 r 16 r 16 r 16 r 16 r 16 r 15 r 0 r 8 r 16 r 0 r -1 r 0 r 16 r 16 r 23 r 16 r 16 r 0 r -1 r 0 r 16 r -176 2039 p -1 r 11 r 12 r 12 r 18 r 12 r 12 r 19 r 0 r -1 r 0 r 12 r 12 r 12 r 0 r 11 r 12 r 0 r 11 r 12 r 12 r 12 r 0 r -1 r 0 r 12 r 12 r 12 r 12 r 12 r 12 r 12 r 0 r 11 r -176 2089 p 13 r 15 r 1 r 20 r 15 r 0 r 13 r 14 r 15 r 14 r 15 r 0 r 13 r 1 r 15 r 0 r 13 r 14 r 0 r 0 r 0 r 14 r 14 r 15 r 14 r 15 r 1 r 14 r -176 2139 p 14 r 15 r 14 r 22 r 15 r 0 r 14 r 14 r 0 r 14 r 1 r 15 r 15 r 15 r 1 r 15 r 15 r 15 r 0 r 14 r 14 r 15 r 15 r 15 r 15 r 15 r 15 r -176 2189 p -1 r -176 2288 p 13 r 15 r 0 r 0 r 14 r 3 r 13 2 ru
+13 r 15 r -1 r 14 r 1 r 15 r 14 r 0 r 13 r 15 r 14 r 15 r 14 r 15 r 14 r 0 r 14 r 14 r 0 r -3 r 19 r 15 r -176 2338 p 13 r 14 r 0 r 13 r 14 r 14 r 14 r 14 r 14 r 13 r 0 r 13 r 14 r 14 r 14 r -176 2438 p 20 r 16 r 16 r 1 r 16 r 0 r 15 r 16 r 16 r -5 r -1 r 15 r 16 r 16 r -93 2521 p 21 r 109 r -28 2562 p 21 r 22 r 22 r -6 2604 p 21 r 43 r 22 r -176 2728 p 13 r 1 r 14 r 14 r 13 r 1 r 14 r 14 r 14 r 0 r 13 r 14 r 13 r 14 r 14 r 14 r 14 r 14 r -1 r @eop
+10 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 54 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 87 @dc
+[<> 0 0 0 -1 0.000] 77 @dc
+[<> 0 0 0 -1 0.000] 40 @dc
+[<> 0 0 0 -1 0.000] 41 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 90 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 55 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 88 @dc
+ @sf
+[<> 0 0 0 -1 0.000] 61 @dc
+10 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1225 r -176 -155 p 2250 2 ru
+-184 -20 p 2 58 ru
+-183 -76 p 511 2 ru
+-166 -29 p 86 r 17 r 1 r -176 48 p 14 r 0 r 15 r 1 r 15 r 16 r 0 r -1 r 14 r 16 r 15 r 16 r 1 r 15 r 1 r 16 r 15 r 16 r 1 r 1 r 24 r 15 r 16 r 1 r 15 r 16 r 16 r -1 r 15 r -176 98 p -1 r 13 r -93 181 p 21 r 21 r 215 r -4 r 14 r 15 r 15 r -2 r -176 306 p 12 r 0 r 12 r 13 r 1 r 13 r 13 r 13 r 1 r 13 r 13 r 13 r 13 r 19 r 13 r 13 r 13 r 13 r -176 355 p 12 r 13 r 14 r 0 r 12 r 13 r 1 r 14 r 13 r 2 r 13 r 14 r 1 r 13 r 13 r 19 r 13 r 13 r 1 r 14 r 13 r 1 r 13 r -176 405 p 16 r 17 r 17 r 17 r 17 r 0 r 16 r 28 r 17 r 16 r 2 r -1 r 16 r 1 r 17 r 0 r 16 r 17 r 17 r 17 r 1 r 17 r -176 455 p 13 r 14 r 13 r 0 r 13 r 0 r 13 r 18 r 14 r 14 r 14 r 14 r 13 r 14 r 0 r 13 r 14 r 14 r 13 r -93 538 p 21 r 21 r 22 r 22 r 22 r -176 663 p 12 r 0 r 13 r 0 r 12 r 14 r 13 r 14 r 13 r 14 r 13 r 14 r 13 r 14 r 13 r 19 r 13 r 1 r -176 712 p 16 r 0 r -1 r 18 r 17 r 18 r 18 r 18 r 18 r 18 r 17 r 0 r 17 r 0 r -2 r 17 r 18 r 29 r 18 r 0 r 17 r 17 r -176 762 p -1 r -1 r 14 r 15 r 15 r 15 r 15 r 1 r 16 r 0 r 14 r 15 r 15 r 15 r 1 r 15 r 0 r 14 r 0 r 14 r 15 r 1 r 16 r 15 r 15 r -176 812 p 1 r 13 2 ru
+14 r 0 r 13 r -2 r 13 r 0 r 12 r 14 r 14 r 14 r 14 r 2 r 13 2 ru
+13 r 14 r 14 r -176 912 p 15 r 16 r 16 r 16 r 0 r 14 r 16 r 16 r 16 r 16 r 16 r 0 r -1 r 24 r 16 r 16 r 16 r 16 r 15 r 2 r 16 r 1 r -176 961 p 13 r 13 r 0 r 13 r 14 r 13 r 14 r 14 r 13 r 0 r 13 r 1 r 14 r 14 r 13 r 14 r 0 r 13 r 13 r 19 r -176 1011 p 13 r 15 r 14 r 14 r 15 r 14 r 0 r 13 r 15 r 14 r 15 r 14 r 15 r 14 r 3 r 13 2 ru
+13 r 14 r 1 r 15 r 14 r 0 r 13 r -176 1061 p 13 r 14 r 13 r 0 r 13 r 0 r 13 r -184 1182 p 2 48 ru
+-183 1136 p 899 2 ru
+-166 1182 p 86 r 17 r 16 r 2 r -1 r 16 r -176 1251 p 19 r 20 r 20 r 20 r 20 r 0 r 19 r 0 r 19 r 20 r -1 r 19 r 2 r 20 r 37 r 20 r 20 r 20 r -1 r 19 r -176 1301 p -1 r 13 r 13 r 14 r 14 r 1 r 14 r 14 r 14 r 14 r -3 r 13 r 14 r 14 r -1 r 13 r 14 r 14 r 14 r 0 r 12 r -93 1384 p 21 r 21 r 22 r 66 r -184 1515 p 2 58 ru
+-183 1458 p 892 2 ru
+-166 1505 p 86 r 17 r -1 r 16 r 16 r -93 1583 p 13 r 0 r -1 r 14 r 14 r 15 r 14 r 15 r 16 r 18 r 15 r -1 r 20 r 15 r 14 r 0 r 14 r -1 r 14 r 0 r 13 r 0 r 14 r 14 r 15 r 1 r 0 r -1 r 13 r -176 1633 p 13 r 2 r 13 2 ru
+13 r 0 r 14 r 14 r 0 r 13 r 0 r 12 r 14 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 0 r -1 r -93 1716 p 21 r 21 r 66 r 131 r 14 r -1 r 14 r 15 r 15 r 15 r 15 r 14 r 15 r -93 1758 p 21 r 21 r 66 r 22 r 14 r -1 r 14 r 15 r 15 r 15 r 15 r 14 r 15 r -176 1882 p 12 r 13 r 13 r 1 r 13 r 12 r 13 r 13 r 13 r 0 r 12 r 13 r 1 r 13 r 13 r 0 r 11 r 0 r 12 r 13 r 0 r 12 r 13 r 13 r 3 r 13 2 ru
+13 r 12 r 13 r 3 r 13 2 ru
+13 r -176 1932 p 13 r 14 r 13 r 14 r 14 r 14 r 0 r 13 r 13 r 14 r 14 r 14 r 2 r 12 2 ru
+13 r 14 r 14 r 13 r 14 r 14 r 0 r 13 r 14 r 13 r 0 r 13 r -176 2032 p 16 r 18 r 17 r 18 r 17 r 0 r 17 r 1 r 17 r 18 r 0 r 16 r 0 r 17 r 17 r 0 r -1 r 16 r 0 r 17 r 17 r 18 r 0 r 16 r 1 r 30 r 17 r 18 r -176 2081 p 15 r 17 r 16 r 16 r 24 r 17 r 0 r 15 r 0 r 16 r 16 r 16 r 17 r 0 r 15 r 20 r 16 r 16 r 2 r 16 r 16 r 17 r 16 r 0 r -1 r 15 r 17 r 0 r -176 2131 p 2 r 20 r 15 r 14 r 14 r 15 r 0 r 13 r 0 r 13 r 0 r 13 r 15 r 14 r 1 r 15 r 15 r 14 r 14 r 15 r 0 r 13 r 14 r 0 r -1 r 13 r 15 r 1 r 14 r -176 2181 p -1 r 13 r 13 r 14 r 0 r 13 r 14 r 14 r 13 r 2 r 18 r 14 r 0 r 13 r 13 r 14 r 0 r 13 r 14 r 14 r 13 r 2 r 13 r 14 r 14 r 14 r 14 r -93 2264 p 21 r 21 r -93 2306 p 21 r 21 r -184 2436 p 2 58 ru
+-183 2380 p 235 2 ru
+-166 2427 p 86 r -184 2559 p 2 58 ru
+-183 2503 p 657 2 ru
+-166 2549 p 86 r 17 r 16 r 17 r -176 2630 p 13 r 1 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 14 r 0 r 13 r 1 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r 14 r 14 r 1 r 14 r 14 r 14 r 11 r 14 r 14 r -176 2680 p 15 r 16 r 16 r -1 r 15 r 16 r 17 r 0 r 14 r 16 r 16 r 16 r 1 r 16 r 1 r 16 r 16 r 16 r 16 r 0 r 15 r 24 r 16 r 16 r 16 r -176 2730 p 0 r 14 r 14 r 14 r @eop
+11 @bop0
+ @sf
+[<> 0 0 0 -1 0.000] 35 @dc
+[<> 0 0 0 -1 0.000] 75 @dc
+11 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1225 r -176 -155 p 2250 2 ru
+-93 -34 p 21 r 21 r -6 6 p 21 r -6 48 p 64 r -6 89 p 64 r -6 131 p 64 r -93 172 p 21 r -176 297 p -1 r 10 r 11 r 12 r 11 r 12 r 11 r 1 r 12 r 11 r 11 r 0 r -3 r 10 r 0 r 10 r 2 r 11 r 11 r 12 r 11 r 1 r 0 r 10 r 0 r 14 r 11 r 11 r 12 r 11 r 12 r 1 r 0 r -93 380 p 21 r 21 r -93 422 p 21 r 21 r -93 463 p 21 r 21 r -93 505 p 21 r 21 r -93 546 p 21 r 21 r -93 588 p 21 r 21 r -93 629 p 21 r 21 r -93 671 p 21 r 21 r -93 712 p 21 r 21 r -93 754 p 21 r 21 r -93 837 p 21 r 21 r -93 878 p 21 r 21 r -93 920 p 21 r 21 r 22 r -93 961 p 21 r 21 r 22 r -184 1092 p 2 58 ru
+-183 1036 p 488 2 ru
+-166 1082 p 86 r 17 r -1 r -176 1161 p 13 r 14 r 1 r 0 r 12 r 14 r 14 r 14 r 1 r 14 r 14 r 1 r 14 r 0 r 12 r 14 r 14 r 0 r 13 r 0 r -93 1244 p 21 r 21 r 22 r 22 r 22 r -93 1285 p 21 r -176 1410 p 13 r 14 r 13 r 14 r 14 r 14 r -1 r 12 r 14 r 0 r 0 r 14 r 0 r -93 1493 p -28 1534 p 21 r 15 1576 p 22 r 15 1617 p 22 r 15 1659 p 22 r 551 r -1 r 13 r -1 r 14 r 15 r -2 r -2 r 15 1700 p 22 r -28 1742 p 21 r -93 1783 p 21 r 21 r -93 1825 p 21 r 21 r 15 1866 p 22 r 15 1908 p 22 r -28 1949 p 21 r -176 2074 p 14 r 14 r 0 r 14 r 15 r 14 r 15 r 15 r 14 r 15 r 1 r 15 r 15 r -1 r 13 r 15 r 15 r 0 r -2 r 14 r 15 r 14 r 15 r 15 r 21 r 15 r 0 r -2 r -176 2124 p 12 r 14 r 13 r 14 r 14 r 1 r 13 r 14 r 13 r 14 r 13 r 14 r 14 r 13 r 1 r 14 r 13 r 14 r 0 r -1 r 12 r 0 r 17 r 14 r 13 r 14 r 14 r -1 r 13 r -176 2174 p 14 r 0 r -1 r 15 r 15 r 16 r 15 r 0 r 15 r 15 r 16 r -1 r 15 r 16 r 15 r 16 r -1 r 15 r 0 r -1 r -1 r 14 r 16 r 15 r 24 r 15 r -176 2223 p -1 r 12 r 13 r 14 r -1 r -1 r 13 r 13 r 0 r -1 r 12 r 1 r 13 r 14 r 0 r 12 r 13 r 14 r -1 r -1 r 13 r -1 r 13 r 13 r 0 r -1 r -176 2273 p 0 r 14 r 14 r 15 r 0 r 18 r -2 r 13 r 0 r 13 r 0 r 13 r 15 r 14 r 0 r 13 r 19 r 14 r 15 r 14 r 14 r 14 r 15 r 0 r 13 r 14 r 14 r 2 r -176 2323 p -1 r 13 r 14 r 0 r 13 r 0 r 0 r 14 r 15 r -3 r 2 r 12 2 ru
+15 r 12 2 ru
+12 r 3 r 12 2 ru
+12 r 0 r 13 r -2 r 1 r 12 2 ru
+15 r 12 2 ru
+13 r -3 r -1 r 13 r 14 r 15 r -1 r 14 r 14 r 14 r -176 2373 p -1 r -176 2472 p 14 r -1 r 14 r 15 r 15 r 15 r 15 r 14 r 15 r 1 r 15 r 15 r 15 r 15 r 14 r 22 r -3 r 14 r 15 r 15 r 15 r 15 r 14 r 15 r 0 r -176 2522 p -1 r 13 r -1 r 13 r 14 r 0 r 13 r 0 r 12 r 14 r 0 r -1 r -4 r 18 r 14 r 1 r 14 r 14 r 13 r -1 r 13 r 14 r 14 r 13 r 0 r 13 r 0 r 13 r 0 r 13 r 13 r -93 2605 p 21 r 21 r 88 r @eop
+12 @bop0
+[<> 0 0 0 -1 0.000] 56 @dc
+12 @bop1
+-176 -173 p 15 r 0 r 16 r 99 r 17 r 0 r 15 r 17 r 1225 r -176 -155 p 2250 2 ru
+-184 -29 p 2 48 ru
+-183 -76 p 586 2 ru
+-166 -29 p 86 r 17 r 16 r -3 r 16 r -176 39 p 14 r 14 r 15 r 15 r 15 r 14 r 15 r 0 r -1 r 13 r 15 r 15 r 15 r 14 r 0 r 14 r 15 r 14 r 22 r -3 r 14 r 0 r -4 r 14 r 0 r -1 r -1 r 14 r 0 r 0 r -176 88 p 13 r 13 r 14 r 14 r 14 r 14 r 13 r 14 r 0 r -1 r 13 r 13 r 14 r 0 r 13 r 0 r 12 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r 14 r 13 r 14 r 14 r 14 r -176 138 p -1 r 13 r 13 r 14 r 0 r 17 r -2 r 13 r 0 r 13 r -1 r 13 r 14 r 14 r 14 r 14 r 13 r -1 r -2 r 16 r 0 r 13 r 14 r -176 238 p 21 r 21 r -176 288 p 21 r 21 r -176 337 p 21 r 21 r -176 387 p 21 r 21 r -93 449 p 13 r 0 r 0 r 14 r 13 r 14 r 14 r 14 r 14 r @eop
+@end

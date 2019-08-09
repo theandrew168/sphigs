@@ -1,0 +1,44 @@
+The instructions for installing SPHIGS are equivalent to those for SRGP.
+This file describes issues relevant only to SPHIGS.
+
+The Makefile in "src/sphigs/" contains a very important comment based on an
+idea presented in the SRGP README file.  Please read and understand it before
+attempting a compilation on your system.
+
+Be aware that sphigs code relies on the existence of the ANSI standard object
+libraries, which not all sites have at this time.  One user reported having to
+do two modifications to the sphigs source, both modifications of which I
+approve.  I quote his letter:
+
+|  1) file sph_object.c has #include <stdlib.h>
+|        I changed this to #include <stdio.h>
+|        and compilation went ok.
+|
+|  2) file sph_element tries to use the symbol (typedef ?) "size_t"
+|        in several places.  I looked pretty harmless, so as a hack,
+|        I added #define size_t unsigned
+|        to the start of the file.  It should probably be cleaned
+|        up better in an offical correction.
+|
+		ABOVE REPORT FROM Allan Tuchman (tuchman@csrd.uiuc.edu)
+
+One user installing on a SUN 3/260 has this to report:
+
+|  1.  I was trying to install sphigs on a SUN 3/260.  I changed the platform
+|      flag from sparc to SUN3 to reflect this.  I then got many compiler errors
+|      in include files (floatingpoint.h, etc.).  I then changed it back to
+|      sparc and it compiled fine.
+|  
+|  2.  The file sph_element.c is missing an include (sys/types.h) because size_t
+|      was not defined.  I realize, this is machine specific - some machines
+|      automatically include types.h, some don't.
+|  
+|  3.  File sph_object.c includes a file called stdlib.h.  We don't have this
+|      file, so I changed it to stdio.h, and it compiled just fine.
+
+
+Other users report the linker being unable to locate "irint()".  This is a
+function that performs rounding of a double to an int, using the current IEEE
+rounding direction.  If unavailable on your system, you can try this:
+	 #define irint(X) (X)
+

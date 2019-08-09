@@ -1,0 +1,42 @@
+SPHIGS Version 1.0 --- RELEASED  8 Mar 1993
+
+- fixed compose() confusion
+- change to column matrix convention
+- FillArea rendering (both sides)
+- Proper z-ordering of mixed solid/non-solid objects
+- SPH_copyStructure()
+- Multiple point light sources
+- FLAT shading
+- Name Sets for visibility
+- Pick Correlation extensions:
+     - polyline
+     - polymarker
+     - text
+- correlate on surface of facet, not just edges
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SPHIGS Version 0.8 --- RELEASED  25 Nov
+
+Input added, including pick correlation for fill areas and polyhedra.
+Exercising of the input model added to the SPHDEMO example application.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SPHIGS Version 0.3b (beta)  --- RELEASED  5 Sep
+
+Some documentation bugs fixed.
+
+Better error messages for illegal viewing parameters.
+
+Point light source's default location changed to be (0,+HUGE,+HUGE).
+    Note: that's in VRC (UVN) coordinates.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SPHIGS Version 0.3a (beta)  --- RELEASED 28 Aug
+
+Color and shading support enhanced and made more platform-independent.
+      Required a change to the calling sequence for SPH_begin().
+      See reference manual section 4 for full details.
+Structure- and view-table sizes may now be set by application.
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+SPHIGS Version 0.3 (beta) --- RELEASED 17 Aug
